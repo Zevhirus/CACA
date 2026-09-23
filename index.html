@@ -16,10 +16,22 @@
     --c-ink:#1A2530; --c-ink-muted:#5C6B7A; --c-surface:#FFFFFF; --c-bg:#F2F5F9;
     --c-border:#DDE5EE; --c-success:#1F7A4D; --c-success-tint:#E8F5EE;
     --c-danger:#B0291F; --c-danger-tint:#FBEAE8;
+    --shadow-sm:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);
+    --shadow-md:0 8px 24px -8px rgba(11,61,99,.18);
+    --shadow-lg:0 24px 60px -20px rgba(7,43,71,.35);
   }
   html,body{height:100%;}
-  body{background:var(--c-bg); color:var(--c-ink); font-family:'Inter',system-ui,sans-serif;}
+  html{scroll-behavior:smooth;}
+  body{
+    color:var(--c-ink); font-family:'Inter',system-ui,sans-serif;
+    background:
+      radial-gradient(1100px 480px at 100% -10%, #EFF4FA 0%, transparent 60%),
+      radial-gradient(900px 420px at -10% 0%, #FCF6E9 0%, transparent 55%),
+      var(--c-bg);
+    background-attachment: fixed;
+  }
   .font-display{font-family:'Plus Jakarta Sans',system-ui,sans-serif;}
+  * { transition: background-color .15s ease, border-color .15s ease, box-shadow .18s ease, transform .12s ease, opacity .15s ease; }
   #printArea{display:none;}
   @media print {
     body *{visibility:hidden;}
@@ -27,10 +39,24 @@
     #printArea{display:block; position:absolute; top:0; left:0; width:100%; padding:18mm;}
     @page{size:A4; margin:0;}
   }
-  .badge{display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .7rem; border-radius:999px; font-size:.75rem; font-weight:600; white-space:nowrap;}
+  .badge{display:inline-flex; align-items:center; gap:.4rem; padding:.3rem .75rem; border-radius:999px; font-size:.75rem; font-weight:600; white-space:nowrap; box-shadow: inset 0 0 0 1px rgba(0,0,0,.02);}
   input,select,textarea{font-family:inherit;}
   input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--c-primary); outline-offset:1px;}
-  .timeline-line{position:absolute; left:15px; top:32px; bottom:-4px; width:2px; background:var(--c-border);}
+  input,select,textarea{background:var(--c-surface);}
+  .timeline-line{position:absolute; left:15px; top:32px; bottom:-4px; width:2px; background:linear-gradient(var(--c-border), transparent);}
+  .hover-lift:hover{ transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .btn-primary{ background:linear-gradient(180deg, #0E4A78, var(--c-primary)); box-shadow: 0 6px 16px -6px rgba(11,61,99,.55); }
+  .btn-primary:hover{ filter: brightness(1.06); }
+  .btn-primary:active{ transform: translateY(1px); }
+  .row-hover:hover{ background: var(--c-primary-tint); }
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb{ background:#C7D3E0; border-radius:99px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  .pill{ display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .9rem; border-radius:999px; font-size:.72rem; font-weight:700; letter-spacing:.03em; }
+  .step-card{ background:var(--c-surface); border:1px solid var(--c-border); border-radius:14px; padding:16px; box-shadow:var(--shadow-sm); }
+  .step-num{ display:inline-flex; align-items:center; justify-content:center; height:28px; width:28px; border-radius:999px; background:var(--c-primary-tint); color:var(--c-primary); font-weight:800; font-size:.8rem; }
+  .paper-card{ background:#fff; border-radius:14px; box-shadow:var(--shadow-md); border:1px solid var(--c-border); }
+  .sticker{ transform:rotate(-6deg); border:2px solid var(--c-danger); color:var(--c-danger); border-radius:8px; padding:6px 10px; background:#fff; box-shadow:var(--shadow-sm); font-family:'Plus Jakarta Sans',sans-serif; }
 </style>
 </head>
 <body class="font-body">
@@ -106,6 +132,7 @@ const State = {
   authState: 'loading', // loading | login | no-role | ok
   authMode: 'signin',
   authError: '',
+  showLoginPage: false, // true = tampilkan halaman login khusus (bukan landing)
   publicMode: false,    // true = halaman Lacak Surat publik (tanpa login)
   trackResult: null, trackError: '', trackLoading: false,
   suratList: [], profiles: [], searchQ: '',
@@ -182,6 +209,8 @@ const App = {
     render();
   },
 
+  goToLoginPage() { State.showLoginPage = true; State.authError=''; window.scrollTo({top:0}); render(); },
+  backToLanding() { State.showLoginPage = false; State.authError=''; window.scrollTo({top:0}); render(); },
   toggleAuthMode() { State.authMode = State.authMode === 'signin' ? 'signup' : 'signin'; State.authError=''; render(); },
   async submitAuth(ev) {
     ev.preventDefault();
@@ -205,7 +234,7 @@ const App = {
     btn.disabled = false;
     render();
   },
-  async logout() { await sb.auth.signOut(); State.view='dashboard'; },
+  async logout() { await sb.auth.signOut(); State.view='dashboard'; State.showLoginPage=false; },
 
   goTo(view, id) { State.view = view; State.detailId = id || null; window.scrollTo({top:0}); render(); },
   dismissToast() { State.toast = null; render(); },
@@ -356,7 +385,7 @@ function StageBadge(id){ const m = stageMeta(id); return `<span class="badge" st
 function Toast(){
   if (!State.toast) return '';
   const t = State.toast; const isErr = t.type === 'error';
-  return `<div class="fixed top-4 right-4 z-50 max-w-sm rounded-lg shadow-lg border px-4 py-3 text-sm flex items-start gap-3"
+  return `<div class="fixed top-4 right-4 z-50 max-w-sm rounded-xl shadow-lg border px-4 py-3 text-sm flex items-start gap-3"
        style="background:${isErr?'var(--c-danger-tint)':'var(--c-success-tint)'}; border-color:${isErr?'var(--c-danger)':'var(--c-success)'}33; color:${isErr?'var(--c-danger)':'var(--c-success)'};">
     <div class="flex-1">${escapeHtml(t.msg)}</div>
     <button onclick="App.dismissToast()" class="font-bold leading-none">&times;</button></div>`;
@@ -378,13 +407,13 @@ function Shell(inner) {
 function PublicTrackView() {
   let resultBlock = '';
   if (State.trackLoading) resultBlock = `<div class="text-sm text-center mt-4" style="color:var(--c-ink-muted);">Mencari...</div>`;
-  else if (State.trackError) resultBlock = `<div class="text-sm rounded-md px-3 py-2 mt-4" style="background:var(--c-danger-tint); color:var(--c-danger);">${escapeHtml(State.trackError)}</div>`;
+  else if (State.trackError) resultBlock = `<div class="text-sm rounded-lg px-3 py-2 mt-4" style="background:var(--c-danger-tint); color:var(--c-danger);">${escapeHtml(State.trackError)}</div>`;
   else if (State.trackResult) {
     const r = State.trackResult;
     const sm = sifatMeta(r.sifat);
     const items = (r.riwayat_publik || []).slice().sort((a,b)=>new Date(a.waktu)-new Date(b.waktu));
     resultBlock = `
-    <div class="rounded-lg border p-4 mt-4 text-left" style="background:var(--c-surface); border-color:var(--c-border);">
+    <div class="rounded-xl border p-4 mt-4 text-left" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
       <div class="text-xs" style="color:var(--c-ink-muted);">Nomor Resi</div>
       <div class="font-display font-bold text-lg mb-2" style="color:var(--c-primary);">${escapeHtml(r.nomor_resi)}</div>
       <div class="text-sm mb-1"><span class="font-medium">Perihal:</span> ${escapeHtml(r.perihal)}</div>
@@ -404,12 +433,12 @@ function PublicTrackView() {
     </div>`;
   }
   return Shell(`
-    <div class="rounded-lg border p-5" style="background:var(--c-surface); border-color:var(--c-border);">
+    <div class="rounded-xl border p-5" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
       <div class="text-sm font-semibold mb-1" style="color:var(--c-primary);">Lacak Status Surat</div>
       <p class="text-xs mb-3" style="color:var(--c-ink-muted);">Masukkan nomor resi yang tertera pada tanda terima surat Anda.</p>
       <form onsubmit="App.submitTrack(event)" class="flex gap-2">
-        <input name="resi" required placeholder="mis. SMR-20260923-8F3K1" class="flex-1 rounded-md border px-3 py-2 text-sm uppercase" style="border-color:var(--c-border);">
-        <button type="submit" class="px-4 py-2 text-sm font-semibold rounded-md" style="background:var(--c-primary); color:white;">Lacak</button>
+        <input name="resi" required placeholder="mis. SMR-20260923-8F3K1" class="flex-1 rounded-lg border px-3 py-2 text-sm uppercase" style="border-color:var(--c-border);">
+        <button type="submit" class="px-4 py-2 text-sm font-semibold rounded-lg" style="background:var(--c-primary); color:white;">Lacak</button>
       </form>
       ${resultBlock}
     </div>
@@ -417,30 +446,144 @@ function PublicTrackView() {
   `);
 }
 
-function LoginView() {
+function IllustrationSVG() {
+  return `
+  <div class="relative hidden md:block" style="min-width:260px;">
+    <div class="paper-card p-4 w-56" style="transform:rotate(3deg);">
+      <div class="h-16 rounded-lg mb-3 flex items-center justify-center" style="background:var(--c-primary-tint);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--c-primary)" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18M8 4v4"/></svg>
+      </div>
+      <div class="h-2 rounded-full mb-1.5" style="background:var(--c-border); width:80%;"></div>
+      <div class="h-2 rounded-full mb-1.5" style="background:var(--c-border); width:60%;"></div>
+      <div class="h-2 rounded-full" style="background:var(--c-border); width:70%;"></div>
+    </div>
+    <div class="paper-card p-3 w-40 absolute -right-6 -bottom-6" style="transform:rotate(-6deg);">
+      <div class="h-2 rounded-full mb-1.5" style="background:var(--c-border); width:90%;"></div>
+      <div class="h-2 rounded-full mb-1.5" style="background:var(--c-border); width:70%;"></div>
+      <div class="h-2 rounded-full" style="background:var(--c-border); width:50%;"></div>
+    </div>
+    <div class="sticker absolute -left-8 bottom-2 text-center">
+      <div style="font-size:9px; font-weight:700;">DIARSIPKAN</div>
+      <div style="font-size:11px; font-weight:800; font-family:monospace;">SMR-2026-8F3K1</div>
+    </div>
+  </div>`;
+}
+function StepCard(num, icon, title, desc) {
+  return `<div class="step-card">
+    <div class="flex items-center gap-2 mb-2"><span class="step-num">${num}</span><span class="font-semibold text-sm" style="color:var(--c-primary);">${icon} ${escapeHtml(title)}</span></div>
+    <div class="text-xs" style="color:var(--c-ink-muted); line-height:1.5;">${escapeHtml(desc)}</div>
+  </div>`;
+}
+function TrackPanelInner() {
+  let resultBlock = '';
+  if (State.trackLoading) resultBlock = `<div class="text-sm text-center mt-4" style="color:var(--c-ink-muted);">Mencari...</div>`;
+  else if (State.trackError) resultBlock = `<div class="text-sm rounded-lg px-3 py-2 mt-4" style="background:var(--c-danger-tint); color:var(--c-danger);">${escapeHtml(State.trackError)}</div>`;
+  else if (State.trackResult) {
+    const r = State.trackResult;
+    const sm = sifatMeta(r.sifat);
+    const items = (r.riwayat_publik || []).slice().sort((a,b)=>new Date(a.waktu)-new Date(b.waktu));
+    resultBlock = `
+    <div class="rounded-lg border p-4 mt-4 text-left" style="background:var(--c-bg); border-color:var(--c-border);">
+      <div class="text-xs" style="color:var(--c-ink-muted);">Nomor Resi</div>
+      <div class="font-display font-bold text-base mb-2" style="color:var(--c-primary);">${escapeHtml(r.nomor_resi)}</div>
+      <div class="text-sm mb-1"><span class="font-medium">Perihal:</span> ${escapeHtml(r.perihal)}</div>
+      <div class="text-sm mb-3"><span class="font-medium">Sifat:</span> ${Badge(sm.id, sm.color, sm.tint)}</div>
+      <div class="text-xs font-semibold mb-2" style="color:var(--c-primary);">Status Saat Ini</div>
+      <div class="mb-3">${StageBadge(r.current_stage)}</div>
+      <div class="text-xs font-semibold mb-2" style="color:var(--c-primary);">Riwayat</div>
+      <div>${items.map((it,i) => `
+        <div class="relative pl-7 pb-3">
+          ${i < items.length-1 ? '<div class="timeline-line" style="left:10px;"></div>' : ''}
+          <div class="absolute left-0 top-0 h-5 w-5 rounded-full flex items-center justify-center text-[9px]" style="background:${stageMeta(it.posisi).t};">${stageMeta(it.posisi).emoji}</div>
+          <div class="text-xs" style="color:var(--c-ink-muted);">${fmtDateTime(it.waktu)}</div>
+          <div class="text-xs font-medium">${escapeHtml(stageMeta(it.posisi).label)}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  return `
+    <div class="text-sm font-semibold mb-1" style="color:var(--c-primary);">🔍 Cek Status Resi</div>
+    <p class="text-xs mb-3" style="color:var(--c-ink-muted);">Masukkan kode resi pada tanda terima surat Anda.</p>
+    <form onsubmit="App.submitTrack(event)" class="flex gap-2">
+      <input name="resi" required placeholder="SMR-20260923-8F3K1" class="flex-1 rounded-lg border px-3 py-2.5 text-sm uppercase" style="border-color:var(--c-border);">
+      <button type="submit" class="btn-primary hover-lift px-4 py-2.5 text-sm font-semibold rounded-lg" style="color:white;">Cek</button>
+    </form>
+    ${resultBlock}
+  `;
+}
+function LoginPage() {
   const isSignup = State.authMode === 'signup';
   return Shell(`
-    <form onsubmit="App.submitAuth(event)" class="rounded-lg border p-5 space-y-3" style="background:var(--c-surface); border-color:var(--c-border);">
-      <div class="text-sm font-semibold mb-1" style="color:var(--c-primary);">${isSignup ? 'Daftar Akun Baru' : 'Masuk ke SIMARA'}</div>
+    <button onclick="App.backToLanding()" class="text-xs mb-4 inline-flex items-center gap-1" style="color:var(--c-ink-muted);">&larr; Kembali ke beranda</button>
+    <form onsubmit="App.submitAuth(event)" class="rounded-2xl border p-6 space-y-3" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:var(--shadow-md);">
+      <div class="text-sm font-semibold mb-1" style="color:var(--c-primary);">${isSignup ? '📝 Daftar Akun Baru' : '🔐 Masuk ke SIMARA'}</div>
+      <p class="text-xs mb-2" style="color:var(--c-ink-muted);">Khusus staf Resepsionis, Sekretaris, dan tiap Bagian.</p>
       ${isSignup ? `<div><label class="block text-xs font-semibold mb-1">Nama Lengkap</label>
-        <input name="full_name" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>` : ''}
+        <input name="full_name" required class="w-full rounded-lg border px-3 py-2.5 text-sm" style="border-color:var(--c-border);"></div>` : ''}
       <div><label class="block text-xs font-semibold mb-1">Email</label>
-        <input type="email" name="email" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
+        <input type="email" name="email" required class="w-full rounded-lg border px-3 py-2.5 text-sm" style="border-color:var(--c-border);"></div>
       <div><label class="block text-xs font-semibold mb-1">Kata Sandi</label>
-        <input type="password" name="password" required minlength="6" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
-      ${State.authError ? `<div class="text-xs rounded-md px-3 py-2" style="background:var(--c-danger-tint); color:var(--c-danger);">${escapeHtml(State.authError)}</div>` : ''}
-      <button type="submit" class="w-full rounded-md py-2 text-sm font-semibold" style="background:var(--c-primary); color:white;">${isSignup ? 'Daftar' : 'Masuk'}</button>
+        <input type="password" name="password" required minlength="6" class="w-full rounded-lg border px-3 py-2.5 text-sm" style="border-color:var(--c-border);"></div>
+      ${State.authError ? `<div class="text-xs rounded-lg px-3 py-2" style="background:var(--c-danger-tint); color:var(--c-danger);">${escapeHtml(State.authError)}</div>` : ''}
+      <button type="submit" class="btn-primary hover-lift w-full rounded-lg py-2.5 text-sm font-semibold" style="color:white;">${isSignup ? 'Daftar' : 'Masuk'}</button>
       <button type="button" onclick="App.toggleAuthMode()" class="w-full text-xs text-center pt-1" style="color:var(--c-ink-muted);">
         ${isSignup ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar Akun Baru'}
       </button>
     </form>
-    <button onclick="App.enterPublicTrack()" class="w-full mt-4 rounded-md border py-2.5 text-sm font-semibold" style="border-color:var(--c-accent); color:var(--c-accent-dark); background:var(--c-accent-tint);">
-      🔍 Lacak Status Surat (Publik, tanpa login)
-    </button>
-    <p class="text-xs text-center mt-4" style="color:var(--c-ink-muted);">Akun baru belum memiliki peran sampai ditetapkan oleh administrator SIMARA.</p>`);
+    <p class="text-xs text-center mt-4" style="color:var(--c-ink-muted);">Akun baru belum memiliki peran sampai ditetapkan oleh administrator SIMARA.</p>
+  `);
+}
+function Landing() {
+  const isSignup = State.authMode === 'signup';
+  return `
+  <div class="min-h-screen" style="padding-top:env(safe-area-inset-top,0px);">
+    <header class="max-w-6xl mx-auto px-4 pt-6 pb-2 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">${Logo(36)}<span class="font-display font-bold" style="color:var(--c-primary);">SIMARA</span></div>
+      <button onclick="App.goToLoginPage()" class="pill" style="background:var(--c-primary-tint); color:var(--c-primary); border:none; cursor:pointer;">🔒 Masuk Staf</button>
+    </header>
+
+    <section class="max-w-6xl mx-auto px-4 pt-10 pb-8 grid md:grid-cols-2 gap-10 items-center">
+      <div>
+        <span class="pill mb-4" style="background:var(--c-accent-tint); color:var(--c-accent-dark);">📌 ${escapeHtml(ORG_NAME.toUpperCase())}</span>
+        <h1 class="font-display font-extrabold leading-tight mt-4" style="color:var(--c-primary); font-size:clamp(1.9rem,4vw,2.75rem);">
+          Arsip surat rapi,<br>terlacak setiap saat.
+        </h1>
+        <p class="text-sm mt-4 max-w-md" style="color:var(--c-ink-muted); line-height:1.6;">
+          SIMARA mencatat setiap surat masuk, alur disposisinya, hingga diarsipkan &mdash;
+          staf mengelola lewat akun resmi, dan siapa saja bisa memantau statusnya lewat nomor resi.
+        </p>
+        <div class="flex flex-wrap gap-3 mt-6">
+          <a href="#panel-lacak" class="btn-primary hover-lift px-5 py-3 text-sm font-semibold rounded-lg inline-flex items-center gap-2" style="color:white;">🔍 Lacak Status Surat</a>
+          <button onclick="App.goToLoginPage()" class="hover-lift px-5 py-3 text-sm font-semibold rounded-lg border inline-flex items-center gap-2" style="border-color:var(--c-primary); color:var(--c-primary); background:var(--c-surface); cursor:pointer;">🔐 Masuk sebagai Staf</button>
+        </div>
+      </div>
+      ${IllustrationSVG()}
+    </section>
+
+    <section class="max-w-6xl mx-auto px-4 pb-10 grid sm:grid-cols-3 gap-3">
+      ${StepCard(1,'📥','Diterima','Resepsionis mencatat surat masuk beserta lampirannya dan menerbitkan nomor resi.')}
+      ${StepCard(2,'🔄','Diproses','Sekretaris mencatat lokasi &amp; disposisi dari Direksi, diteruskan ke Bagian terkait.')}
+      ${StepCard(3,'🗂️','Diarsipkan','Bagian terkait menindaklanjuti dan mengarsipkan &mdash; status akhir tercatat rapi.')}
+    </section>
+
+    <section class="max-w-3xl mx-auto px-4 pb-16 grid sm:grid-cols-2 gap-6 items-start">
+      <div id="panel-lacak" class="rounded-2xl border p-6" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:var(--shadow-sm); scroll-margin-top:80px;">
+        ${TrackPanelInner()}
+      </div>
+      <div class="rounded-2xl p-5" style="background:linear-gradient(160deg,var(--c-primary-dark),var(--c-primary)); color:#fff; box-shadow:var(--shadow-md);">
+        <div class="text-sm font-semibold mb-2">🛡️ Aman &amp; Resmi</div>
+        <ul class="text-xs space-y-1.5" style="color:rgba(255,255,255,.85); line-height:1.5;">
+          <li>✓ Data surat hanya bisa diakses staf berwenang yang login.</li>
+          <li>✓ Setiap perpindahan &amp; disposisi surat tercatat otomatis.</li>
+          <li>✓ Surat bersifat Rahasia disembunyikan dari pelacakan publik.</li>
+        </ul>
+        <button onclick="App.goToLoginPage()" class="w-full mt-4 rounded-lg py-2 text-xs font-semibold" style="background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.25);">Masuk sebagai staf &rarr;</button>
+      </div>
+    </section>
+  </div>`;
 }
 function NoRoleView() {
-  return Shell(`<div class="rounded-lg border p-5 text-center" style="background:var(--c-surface); border-color:var(--c-border);">
+  return Shell(`<div class="rounded-xl border p-5 text-center" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
     <div class="text-sm font-semibold mb-1" style="color:var(--c-primary);">Halo, ${escapeHtml((State.profile && State.profile.full_name) || State.user.email)}</div>
     <p class="text-sm" style="color:var(--c-ink-muted);">Akun Anda sudah terdaftar namun belum ditetapkan perannya. Hubungi administrator SIMARA.</p>
     <button onclick="App.logout()" class="mt-4 text-xs underline" style="color:var(--c-ink-muted);">Keluar</button>
@@ -448,10 +591,10 @@ function NoRoleView() {
 }
 function Navbar() {
   const role = State.profile ? ROLE_MAP[State.profile.role] : null;
-  return `<header class="sticky top-0 z-40 border-b" style="background:var(--c-primary); border-color:var(--c-primary-dark);">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+  return `<header class="sticky top-0 z-40" style="background:linear-gradient(135deg, #0E4A78 0%, var(--c-primary) 55%, var(--c-primary-dark) 100%); box-shadow: var(--shadow-md);">
+    <div class="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3">${Logo(42)}
-        <div><div class="font-display font-bold text-white text-lg leading-tight">SIMARA</div>
+        <div><div class="font-display font-bold text-white text-lg leading-tight tracking-tight">SIMARA</div>
         <div class="text-[11px] text-white/70 leading-tight">${escapeHtml(ORG_NAME)}</div></div>
       </div>
       <div class="flex items-center gap-3">
@@ -459,10 +602,10 @@ function Navbar() {
           <div class="text-white text-sm font-semibold leading-tight">${escapeHtml((State.profile && State.profile.full_name) || State.user.email)}</div>
           <div class="text-[11px] text-white/60 leading-tight">${role ? escapeHtml(role.label) : ''}</div>
         </div>
-        <div class="h-9 w-9 rounded-full flex items-center justify-center font-display font-bold text-sm" style="background:var(--c-accent); color:var(--c-primary-dark);">
+        <div class="h-10 w-10 rounded-full flex items-center justify-center font-display font-bold text-sm ring-2 ring-white/20" style="background:linear-gradient(135deg,#DFB24A,var(--c-accent)); color:var(--c-primary-dark); box-shadow:0 3px 10px rgba(0,0,0,.25);">
           ${escapeHtml(((State.profile && State.profile.full_name) || State.user.email || '?').slice(0,2).toUpperCase())}
         </div>
-        <button onclick="App.logout()" class="text-xs text-white/80 border border-white/25 rounded-md px-2.5 py-1.5 hover:bg-white/10">Keluar</button>
+        <button onclick="App.logout()" class="text-xs text-white/85 border border-white/25 rounded-lg px-3 py-2 hover:bg-white/10 hover-lift">Keluar</button>
       </div>
     </div></header>`;
 }
@@ -471,35 +614,42 @@ function TabBar() {
   const tabs = [{id:'dashboard',label:'Meja Saya'},{id:'semua',label:'Semua Surat'}];
   if (role === 'resepsionis') tabs.push({id:'input',label:'+ Input Surat Masuk'});
   if (State.profile.is_admin) tabs.push({id:'admin',label:'Kelola Pengguna'});
-  return `<div class="border-b" style="background:var(--c-surface); border-color:var(--c-border);">
+  return `<div style="background:var(--c-surface); border-bottom:1px solid var(--c-border); box-shadow:0 1px 0 rgba(11,61,99,.02);">
     <div class="max-w-6xl mx-auto px-4 flex gap-1 overflow-x-auto">
-      ${tabs.map(t=>`<button onclick="App.goTo('${t.id}')" class="px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap"
-        style="border-color:${State.view===t.id?'var(--c-accent)':'transparent'}; color:${State.view===t.id?'var(--c-primary)':'var(--c-ink-muted)'};">${escapeHtml(t.label)}</button>`).join('')}
+      ${tabs.map(t=>`<button onclick="App.goTo('${t.id}')" class="relative px-4 py-3.5 text-sm font-semibold whitespace-nowrap"
+        style="color:${State.view===t.id?'var(--c-primary)':'var(--c-ink-muted)'};">${escapeHtml(t.label)}
+        ${State.view===t.id ? `<span style="position:absolute; left:8px; right:8px; bottom:-1px; height:3px; border-radius:3px; background:linear-gradient(90deg, var(--c-accent), var(--c-accent-dark));"></span>` : ''}
+        </button>`).join('')}
     </div></div>`;
 }
-function StatCard(label,value,color){ return `<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
-    <div class="text-xs font-medium" style="color:var(--c-ink-muted);">${escapeHtml(label)}</div>
-    <div class="font-display font-bold text-2xl mt-1" style="color:${color};">${value}</div></div>`; }
+function StatCard(label,value,color,emoji){ return `<div class="rounded-xl border p-4 hover-lift" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:var(--shadow-sm);">
+    <div class="flex items-center justify-between">
+      <div class="text-xs font-medium" style="color:var(--c-ink-muted);">${escapeHtml(label)}</div>
+      <div class="h-7 w-7 rounded-full flex items-center justify-center text-xs" style="background:${color}18;">${emoji||''}</div>
+    </div>
+    <div class="font-display font-extrabold text-2xl mt-1.5" style="color:${color};">${value}</div></div>`; }
 function SuratTable(list, opts) {
   opts = opts || {};
-  if (!list.length) return `<div class="rounded-lg border p-10 text-center" style="background:var(--c-surface); border-color:var(--c-border); color:var(--c-ink-muted);"><div class="text-sm">${escapeHtml(opts.emptyText||'Belum ada surat.')}</div></div>`;
-  return `<div class="rounded-lg border overflow-hidden" style="background:var(--c-surface); border-color:var(--c-border);">
-    <table class="w-full text-sm"><thead><tr style="background:var(--c-primary-tint);">
-      <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Nomor Surat</th>
-      <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Resi</th>
-      <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Pengirim</th>
-      <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Perihal</th>
-      <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Sifat</th>
-      <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Status</th>
-      <th class="text-right font-semibold px-4 py-2.5" style="color:var(--c-primary);"></th></tr></thead>
-      <tbody>${list.map(s=>{ const sm=sifatMeta(s.sifat); return `<tr class="border-t" style="border-color:var(--c-border);">
-        <td class="px-4 py-3 font-medium">${escapeHtml(s.nomor_surat)}</td>
-        <td class="px-4 py-3 text-xs" style="color:var(--c-ink-muted);">${escapeHtml(s.nomor_resi||'-')}</td>
+  if (!list.length) return `<div class="rounded-xl border p-12 text-center" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:var(--shadow-sm);">
+    <div class="text-3xl mb-2">🗂️</div>
+    <div class="text-sm" style="color:var(--c-ink-muted);">${escapeHtml(opts.emptyText||'Belum ada surat.')}</div></div>`;
+  return `<div class="rounded-xl border overflow-hidden" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:var(--shadow-sm);">
+    <table class="w-full text-sm"><thead><tr style="background:linear-gradient(180deg, var(--c-primary-tint), #EAF1F8);">
+      <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide" style="color:var(--c-primary); letter-spacing:.04em;">Nomor Surat</th>
+      <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide" style="color:var(--c-primary); letter-spacing:.04em;">Resi</th>
+      <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide" style="color:var(--c-primary); letter-spacing:.04em;">Pengirim</th>
+      <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide" style="color:var(--c-primary); letter-spacing:.04em;">Perihal</th>
+      <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide" style="color:var(--c-primary); letter-spacing:.04em;">Sifat</th>
+      <th class="text-left font-bold px-4 py-3 text-xs uppercase tracking-wide" style="color:var(--c-primary); letter-spacing:.04em;">Status</th>
+      <th class="text-right font-bold px-4 py-3" style="color:var(--c-primary);"></th></tr></thead>
+      <tbody>${list.map((s,i)=>{ const sm=sifatMeta(s.sifat); return `<tr class="row-hover" style="border-top:1px solid var(--c-border); background:${i%2?'#FBFCFE':'transparent'};">
+        <td class="px-4 py-3 font-semibold">${escapeHtml(s.nomor_surat)}</td>
+        <td class="px-4 py-3 text-xs font-mono" style="color:var(--c-ink-muted);">${escapeHtml(s.nomor_resi||'-')}</td>
         <td class="px-4 py-3">${escapeHtml(s.pengirim)}</td>
         <td class="px-4 py-3 max-w-[200px] truncate" title="${escapeHtml(s.perihal)}">${escapeHtml(s.perihal)}</td>
         <td class="px-4 py-3">${Badge(sm.id,sm.color,sm.tint)}</td>
         <td class="px-4 py-3">${StageBadge(s.current_stage)}</td>
-        <td class="px-4 py-3 text-right"><button onclick="App.goTo('detail','${s.id}')" class="text-xs font-semibold px-3 py-1.5 rounded-md" style="color:white; background:var(--c-primary);">Lihat</button></td>
+        <td class="px-4 py-3 text-right"><button onclick="App.goTo('detail','${s.id}')" class="btn-primary hover-lift text-xs font-semibold px-3.5 py-2 rounded-lg" style="color:white;">Lihat &rarr;</button></td>
       </tr>`; }).join('')}</tbody></table></div>`;
 }
 function Dashboard() {
@@ -512,10 +662,10 @@ function Dashboard() {
     <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Meja Saya</h1>
     <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Surat pada tahap ${roleLabel(role)} yang menunggu tindak lanjut Anda.</p>${note}</div>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      ${StatCard('Total Surat', total, 'var(--c-primary)')}
-      ${StatCard('Menunggu di Meja Saya', mine.length, 'var(--c-accent-dark)')}
-      ${StatCard('Dalam Proses', total-selesai.length, 'var(--c-primary)')}
-      ${StatCard('Diarsipkan', selesai.length, 'var(--c-success)')}
+      ${StatCard('Total Surat', total, 'var(--c-primary)', '📨')}
+      ${StatCard('Menunggu di Meja Saya', mine.length, 'var(--c-accent-dark)', '⏳')}
+      ${StatCard('Dalam Proses', total-selesai.length, '#1B5E8A', '🔄')}
+      ${StatCard('Diarsipkan', selesai.length, 'var(--c-success)', '🟢')}
     </div>
     ${SuratTable(mine, {emptyText:'Tidak ada surat yang menunggu tindak lanjut Anda saat ini.'})}
   </div>`;
@@ -529,8 +679,8 @@ function SemuaSurat() {
       <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Semua Surat</h1>
       <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Arsip lengkap surat masuk beserta status dan posisi terkini.</p></div>
       <div class="flex gap-2">
-        <input onkeyup="State.filterQ=this.value; App._render();" value="${escapeHtml(State.filterQ)}" placeholder="Cari nomor / resi / pengirim / perihal..." class="rounded-md border px-3 py-2 text-sm w-64" style="border-color:var(--c-border);">
-        <select onchange="State.filterSifat=this.value; App._render();" class="rounded-md border px-2 py-2 text-sm" style="border-color:var(--c-border);">
+        <input onkeyup="State.filterQ=this.value; App._render();" value="${escapeHtml(State.filterQ)}" placeholder="Cari nomor / resi / pengirim / perihal..." class="rounded-lg border px-3 py-2 text-sm w-64" style="border-color:var(--c-border);">
+        <select onchange="State.filterSifat=this.value; App._render();" class="rounded-lg border px-2 py-2 text-sm" style="border-color:var(--c-border);">
           <option value="">Semua Sifat</option>${SIFAT_OPT.map(s=>`<option value="${s.id}" ${State.filterSifat===s.id?'selected':''}>${s.id}</option>`).join('')}
         </select>
       </div>
@@ -544,47 +694,47 @@ function InputSurat() {
   return `<div class="max-w-2xl mx-auto px-4 py-6">
     <h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Input Surat Masuk</h1>
     <p class="text-sm mt-0.5 mb-5" style="color:var(--c-ink-muted);">Nomor resi pelacakan publik akan dibuat otomatis saat surat disimpan.</p>
-    <form onsubmit="App.submitSurat(event)" class="rounded-lg border p-5 space-y-4" style="background:var(--c-surface); border-color:var(--c-border);">
+    <form onsubmit="App.submitSurat(event)" class="rounded-xl border p-5 space-y-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div><label class="block text-xs font-semibold mb-1">Nomor Surat *</label>
-          <input name="nomor_surat" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);" placeholder="mis. 045/PP-MR/IX/2026"></div>
+          <input name="nomor_surat" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);" placeholder="mis. 045/PP-MR/IX/2026"></div>
         <div><label class="block text-xs font-semibold mb-1">Sifat Surat</label>
-          <select name="sifat" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">${SIFAT_OPT.map(s=>`<option value="${s.id}">${s.id}</option>`).join('')}</select></div>
+          <select name="sifat" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">${SIFAT_OPT.map(s=>`<option value="${s.id}">${s.id}</option>`).join('')}</select></div>
         <div><label class="block text-xs font-semibold mb-1">Tanggal Surat *</label>
-          <input type="date" name="tanggal_surat" required value="${today}" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
+          <input type="date" name="tanggal_surat" required value="${today}" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
         <div><label class="block text-xs font-semibold mb-1">Tanggal Diterima</label>
-          <input type="date" name="tanggal_terima" value="${today}" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
+          <input type="date" name="tanggal_terima" value="${today}" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
       </div>
       <div><label class="block text-xs font-semibold mb-1">Pengirim / Asal Surat *</label>
-        <input name="pengirim" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
+        <input name="pengirim" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
       <div><label class="block text-xs font-semibold mb-1">Perihal *</label>
-        <textarea name="perihal" required rows="3" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea></div>
+        <textarea name="perihal" required rows="3" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea></div>
       <div><label class="block text-xs font-semibold mb-1">Unggah Berkas / Scan (PDF/JPG/PNG)</label>
-        <input type="file" name="lampiran" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm rounded-md border px-3 py-2" style="border-color:var(--c-border);"></div>
+        <input type="file" name="lampiran" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm rounded-lg border px-3 py-2" style="border-color:var(--c-border);"></div>
       <div class="flex justify-end gap-2 pt-2">
-        <button type="button" onclick="App.goTo('dashboard')" class="px-4 py-2 text-sm rounded-md border" style="border-color:var(--c-border); color:var(--c-ink-muted);">Batal</button>
-        <button type="submit" class="px-4 py-2 text-sm rounded-md font-semibold" style="background:var(--c-primary); color:white;">Simpan &amp; Catat Surat Masuk</button>
+        <button type="button" onclick="App.goTo('dashboard')" class="px-4 py-2 text-sm rounded-lg border" style="border-color:var(--c-border); color:var(--c-ink-muted);">Batal</button>
+        <button type="submit" class="px-4 py-2 text-sm rounded-lg font-semibold" style="background:var(--c-primary); color:white;">Simpan &amp; Catat Surat Masuk</button>
       </div>
     </form></div>`;
 }
 function AksesDitolak(){ return `<div class="max-w-2xl mx-auto px-4 py-16 text-center">
     <p class="text-sm" style="color:var(--c-ink-muted);">Halaman ini tidak tersedia untuk peran Anda.</p>
-    <button onclick="App.goTo('dashboard')" class="mt-4 text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">Kembali ke Meja Saya</button></div>`; }
+    <button onclick="App.goTo('dashboard')" class="mt-4 text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-primary); color:white;">Kembali ke Meja Saya</button></div>`; }
 function Timeline(riwayat) {
   const items = (riwayat||[]).slice().sort((a,b)=>new Date(a.waktu)-new Date(b.waktu));
   return `<div>${items.map((r,i)=>{ const m=stageMeta(r.posisi); const isLast=i===items.length-1;
     return `<div class="relative pl-10 pb-6">${!isLast?'<div class="timeline-line"></div>':''}
       <div class="absolute left-0 top-0 h-8 w-8 rounded-full flex items-center justify-center text-sm" style="background:${m.t}; border:2px solid ${m.c};">${m.emoji}</div>
-      <div class="rounded-lg border p-3" style="background:var(--c-surface); border-color:var(--c-border);">
+      <div class="rounded-xl border p-3" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
         <div class="flex items-center justify-between flex-wrap gap-1"><div>${StageBadge(r.posisi)}</div><div class="text-xs" style="color:var(--c-ink-muted);">${fmtDateTime(r.waktu)}</div></div>
         <div class="text-sm mt-1.5">${escapeHtml(r.keterangan)}</div>
         <div class="text-xs mt-1" style="color:var(--c-ink-muted);">Oleh: ${escapeHtml(r.oleh)}</div>
       </div></div>`; }).join('')}</div>`;
 }
 function DisposisiList(disposisi) {
-  if (!disposisi || !disposisi.length) return `<div class="text-sm rounded-lg border p-4" style="border-color:var(--c-border); color:var(--c-ink-muted);">Belum ada catatan disposisi.</div>`;
+  if (!disposisi || !disposisi.length) return `<div class="text-sm rounded-xl border p-4" style="border-color:var(--c-border); color:var(--c-ink-muted);">Belum ada catatan disposisi.</div>`;
   return `<div class="space-y-3">${disposisi.slice().reverse().map(d=>`
-    <div class="rounded-lg border p-3.5" style="background:var(--c-accent-tint); border-color:var(--c-accent);">
+    <div class="rounded-xl border p-3.5" style="background:var(--c-accent-tint); border-color:var(--c-accent);">
       <div class="flex items-center justify-between flex-wrap gap-1"><div class="text-sm font-semibold" style="color:var(--c-accent-dark);">${escapeHtml(d.dari)} &rarr; ${escapeHtml(d.ke)}</div><div class="text-xs" style="color:var(--c-ink-muted);">${fmtDateTime(d.waktu)}</div></div>
       <div class="text-sm mt-1.5"><span class="font-medium">Instruksi:</span> ${escapeHtml(d.instruksi)}</div>
       ${d.catatan?`<div class="text-sm mt-1"><span class="font-medium">Catatan:</span> ${escapeHtml(d.catatan)}</div>`:''}
@@ -594,44 +744,44 @@ function ActionPanel(s) {
   const role = State.profile.role;
   const panels = [];
   if (role === 'sekretaris') {
-    if (s.current_stage === 'sekretaris') panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
+    if (s.current_stage === 'sekretaris') panels.push(`<div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
       <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Serahkan ke Direktur Utama</div>
-      <button onclick="App.forwardToDirut('${s.id}')" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">🟠 Serahkan ke DIRUT</button></div>`);
-    if (s.current_stage === 'dirut') panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
+      <button onclick="App.forwardToDirut('${s.id}')" class="text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-primary); color:white;">🟠 Serahkan ke DIRUT</button></div>`);
+    if (s.current_stage === 'dirut') panels.push(`<div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
       <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Catat Disposisi Direktur Utama</div>
       <p class="text-xs mb-2" style="color:var(--c-ink-muted);">Input instruksi disposisi yang disampaikan DIRUT, teruskan ke Direktur Bidang terkait.</p>
       <form onsubmit="App.submitDisposisiDirut('${s.id}', event)" class="space-y-2">
-        <select name="tujuan" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"><option value="">Pilih Direktur Bidang...</option>${DIREKTUR_BIDANG.map(r=>`<option value="${r.id}">${r.label}</option>`).join('')}</select>
-        <textarea name="instruksi" required rows="2" placeholder="Instruksi disposisi *" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
-        <input name="catatan" placeholder="Catatan tambahan (opsional)" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">🟡 Kirim Disposisi</button>
+        <select name="tujuan" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"><option value="">Pilih Direktur Bidang...</option>${DIREKTUR_BIDANG.map(r=>`<option value="${r.id}">${r.label}</option>`).join('')}</select>
+        <textarea name="instruksi" required rows="2" placeholder="Instruksi disposisi *" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
+        <input name="catatan" placeholder="Catatan tambahan (opsional)" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">
+        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-primary); color:white;">🟡 Kirim Disposisi</button>
       </form></div>`);
-    if (DIREKTUR_BIDANG.some(r => r.id === s.current_stage)) panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
+    if (DIREKTUR_BIDANG.some(r => r.id === s.current_stage)) panels.push(`<div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
       <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Catat Disposisi ${roleLabel(s.current_stage)}</div>
       <p class="text-xs mb-2" style="color:var(--c-ink-muted);">Input instruksi disposisi ke Bagian terkait.</p>
       <form onsubmit="App.submitDisposisiDirektur('${s.id}', '${s.current_stage}', event)" class="space-y-2">
-        <select name="tujuan" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"><option value="">Pilih Bagian...</option>${BAGIAN_LIST.map(r=>`<option value="${r.id}">${r.label}</option>`).join('')}</select>
-        <textarea name="instruksi" required rows="2" placeholder="Instruksi disposisi *" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
-        <input name="catatan" placeholder="Catatan tambahan (opsional)" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">🔵 Kirim Disposisi</button>
+        <select name="tujuan" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"><option value="">Pilih Bagian...</option>${BAGIAN_LIST.map(r=>`<option value="${r.id}">${r.label}</option>`).join('')}</select>
+        <textarea name="instruksi" required rows="2" placeholder="Instruksi disposisi *" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
+        <input name="catatan" placeholder="Catatan tambahan (opsional)" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">
+        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-primary); color:white;">🔵 Kirim Disposisi</button>
       </form></div>`);
-    panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
+    panels.push(`<div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
       <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Perbarui Lokasi Fisik (Tracking Manual)</div>
       <form onsubmit="App.updateLokasi('${s.id}', event)" class="space-y-2">
-        <select name="lokasi" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
+        <select name="lokasi" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">
           ${['resepsionis','sekretaris','dirut',...DIREKTUR_BIDANG.map(r=>r.id),...BAGIAN_LIST.map(r=>r.id),'selesai'].map(id=>`<option value="${id}" ${s.current_stage===id?'selected':''}>${roleLabel(id)}</option>`).join('')}
         </select>
-        <input name="catatan" placeholder="Catatan (opsional)" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-accent); color:var(--c-primary-dark);">Perbarui Lokasi</button>
+        <input name="catatan" placeholder="Catatan (opsional)" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">
+        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-accent); color:var(--c-primary-dark);">Perbarui Lokasi</button>
       </form></div>`);
   }
-  if (BAGIAN_LIST.some(r=>r.id===role) && s.current_stage===role) panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
+  if (BAGIAN_LIST.some(r=>r.id===role) && s.current_stage===role) panels.push(`<div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
       <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Tindak Lanjut &amp; Pengarsipan</div>
       <form onsubmit="App.selesaikanSurat('${s.id}', '${role}', event)" class="space-y-2">
-        <textarea name="catatan" rows="2" placeholder="Catatan tindak lanjut (opsional)" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-success); color:white;">🟢 Tandai Diarsipkan</button>
+        <textarea name="catatan" rows="2" placeholder="Catatan tindak lanjut (opsional)" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
+        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-success); color:white;">🟢 Tandai Diarsipkan</button>
       </form></div>`);
-  if (!panels.length) return `<div class="text-sm rounded-lg border p-4" style="border-color:var(--c-border); color:var(--c-ink-muted);">Tidak ada tindakan yang tersedia untuk peran Anda pada surat ini saat ini.</div>`;
+  if (!panels.length) return `<div class="text-sm rounded-xl border p-4" style="border-color:var(--c-border); color:var(--c-ink-muted);">Tidak ada tindakan yang tersedia untuk peran Anda pada surat ini saat ini.</div>`;
   return panels.join('');
 }
 function DetailSurat() {
@@ -646,11 +796,11 @@ function DetailSurat() {
         ${Badge(sm.id,sm.color,sm.tint)}${StageBadge(s.current_stage)}</div>
         <p class="text-sm mt-1" style="color:var(--c-ink-muted);">${escapeHtml(s.perihal)}</p>
         <p class="text-xs mt-1" style="color:var(--c-ink-muted);">Nomor Resi: <span class="font-mono font-semibold">${escapeHtml(s.nomor_resi||'-')}</span></p></div>
-      <button onclick="App.printLembar('${s.id}')" class="text-sm font-semibold px-4 py-2 rounded-md border" style="border-color:var(--c-primary); color:var(--c-primary);">Cetak Lembar Disposisi</button>
+      <button onclick="App.printLembar('${s.id}')" class="text-sm font-semibold px-4 py-2 rounded-lg border" style="border-color:var(--c-primary); color:var(--c-primary);">Cetak Lembar Disposisi</button>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 space-y-6">
-        <div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
+        <div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
           <div class="font-semibold text-sm mb-3" style="color:var(--c-primary);">Informasi Surat</div>
           <dl class="grid grid-cols-2 gap-y-2.5 text-sm">
             <dt style="color:var(--c-ink-muted);">Tanggal Surat</dt><dd>${fmtDate(s.tanggal_surat)}</dd>
@@ -660,7 +810,7 @@ function DetailSurat() {
             <dt class="col-span-2" style="color:var(--c-ink-muted);">Perihal</dt><dd class="col-span-2">${escapeHtml(s.perihal)}</dd>
             <dt style="color:var(--c-ink-muted);">Lampiran</dt><dd>${s.lampiran_path?`<button onclick="App.openLampiran('${s.lampiran_path}')" class="underline font-medium" style="color:var(--c-primary);">${escapeHtml(s.lampiran_name||'Lihat lampiran')}</button>`:'<span style="color:var(--c-ink-muted);">Tidak ada</span>'}</dd>
           </dl></div>
-        <div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
+        <div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
           <div class="font-semibold text-sm mb-3" style="color:var(--c-primary);">Riwayat Disposisi</div>${DisposisiList(s.disposisi)}</div>
       </div>
       <div class="space-y-6">
@@ -676,18 +826,18 @@ function AdminPanel() {
   return `<div class="max-w-3xl mx-auto px-4 py-6 space-y-4">
     <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Kelola Pengguna &amp; Peran</h1>
     <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Hanya akun Resepsionis, Sekretaris, dan tiap Bagian yang perlu ditetapkan perannya.</p></div>
-    <input oninput="State.searchQ=this.value; App._render();" value="${escapeHtml(State.searchQ)}" placeholder="Cari nama / email..." class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-    <div class="rounded-lg border divide-y" style="background:var(--c-surface); border-color:var(--c-border);">
+    <input oninput="State.searchQ=this.value; App._render();" value="${escapeHtml(State.searchQ)}" placeholder="Cari nama / email..." class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">
+    <div class="rounded-xl border divide-y" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
       ${rows.map(p => `<div class="flex flex-wrap items-center gap-2 p-3">
         <div class="flex-1 min-w-[160px]">
           <div class="text-sm font-medium">${escapeHtml(p.full_name || p.email)}</div>
           <div class="text-xs" style="color:var(--c-ink-muted);">${escapeHtml(p.email||'')}</div>
         </div>
-        <select id="roleSel_${p.id}" class="rounded-md border px-2 py-1.5 text-xs" style="border-color:var(--c-border);">
+        <select id="roleSel_${p.id}" class="rounded-lg border px-2 py-1.5 text-xs" style="border-color:var(--c-border);">
           <option value="">— Belum ditetapkan —</option>
           ${ROLES.map(r => `<option value="${r.id}" ${p.role===r.id?'selected':''}>${r.label}</option>`).join('')}
         </select>
-        <button onclick="App.assignRole('${p.id}', document.getElementById('roleSel_${p.id}').value)" class="text-xs font-semibold px-3 py-1.5 rounded-md" style="background:var(--c-primary); color:white;">Simpan</button>
+        <button onclick="App.assignRole('${p.id}', document.getElementById('roleSel_${p.id}').value)" class="text-xs font-semibold px-3 py-1.5 rounded-lg" style="background:var(--c-primary); color:white;">Simpan</button>
         <label class="flex items-center gap-1 text-xs" style="color:var(--c-ink-muted);">
           <input type="checkbox" ${p.is_admin?'checked':''} onchange="App.toggleAdmin('${p.id}', this.checked)"> Admin
         </label>
@@ -727,7 +877,7 @@ App._render = function() {
   const el = document.getElementById('app');
   if (State.publicMode) { el.innerHTML = PublicTrackView() + Toast(); return; }
   if (State.authState === 'loading') { el.innerHTML = Shell('<div class="text-sm text-center" style="color:var(--c-ink-muted);">Memuat...</div>') + Toast(); return; }
-  if (State.authState === 'login') { el.innerHTML = LoginView() + Toast(); return; }
+  if (State.authState === 'login') { el.innerHTML = (State.showLoginPage ? LoginPage() : Landing()) + Toast(); return; }
   if (State.authState === 'no-role') { el.innerHTML = NoRoleView() + Toast(); return; }
   let body = '';
   if (State.view === 'dashboard') body = Dashboard();
