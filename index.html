@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SIMARA Perumda Parkir — Sistem Informasi Manajemen Arsip &amp; Surat</title>
+<title>SIMARA Perumda Parkir Makassar Raya — Sistem Informasi Manajemen Arsip &amp; Surat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
     #printArea{display:block; position:absolute; top:0; left:0; width:100%; padding:18mm;}
     @page{size:A4; margin:0;}
   }
-  .badge{display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .6rem; border-radius:999px; font-size:.72rem; font-weight:600; white-space:nowrap;}
+  .badge{display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .7rem; border-radius:999px; font-size:.75rem; font-weight:600; white-space:nowrap;}
   input,select,textarea{font-family:inherit;}
   input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--c-primary); outline-offset:1px;}
   .timeline-line{position:absolute; left:15px; top:32px; bottom:-4px; width:2px; background:var(--c-border);}
@@ -39,63 +39,76 @@
 
 <script>
 /* =====================================================================
-   KONFIGURASI SUPABASE
-   Hanya URL & PUBLISHABLE (anon) KEY yang boleh berada di sini — kode ini
-   berjalan di browser dan bisa dilihat siapa pun lewat "View Source".
-   JANGAN PERNAH menaruh SUPABASE_SECRET_KEY di file ini atau file
-   client-side manapun.
+   KONFIGURASI SUPABASE — hanya URL & PUBLISHABLE (anon) KEY di sini.
 ===================================================================== */
 const SUPABASE_URL = "https://qfhksaccryqtnnozdnpd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_DsQH3uoOdrZMBEnQLHiXfw_ePd_6CCZ";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const LAMPIRAN_BUCKET = "lampiran-surat";
+const ORG_NAME = "Perumda Parkir Makassar Raya";
 
 /* ============================= DATA / KONSTAN ============================= */
+// Peran yang MEMEGANG AKUN (dipakai di form login & panel admin)
 const ROLES = [
   { id:'resepsionis', label:'Resepsionis', group:'Front Office', desc:'Mencatat surat masuk' },
-  { id:'sekretaris', label:'Sekretaris', group:'Sekretariat', desc:'Tracking lokasi & meneruskan ke Direksi' },
-  { id:'dirut', label:'Direktur Utama (DIRUT)', group:'Direksi', desc:'Disposisi awal ke Direktur Bidang' },
-  { id:'dirum', label:'Direktur Umum', group:'Direksi', desc:'Direktur Bidang — Umum' },
-  { id:'dirops', label:'Direktur Operasional', group:'Direksi', desc:'Direktur Bidang — Operasional' },
-  { id:'dirkeu', label:'Direktur Keuangan', group:'Direksi', desc:'Direktur Bidang — Keuangan' },
-  { id:'kabag_pengelolaan', label:'Kepala Bagian Pengelolaan', group:'Kepala Bagian', desc:'Tujuan akhir alur surat' },
-  { id:'kabag_umum', label:'Kepala Bagian Umum', group:'Kepala Bagian', desc:'Tujuan akhir alur surat' },
-  { id:'kabag_produksi', label:'Kepala Bagian Produksi', group:'Kepala Bagian', desc:'Tujuan akhir alur surat' },
-  { id:'kabag_keuangan', label:'Kepala Bagian Keuangan', group:'Kepala Bagian', desc:'Tujuan akhir alur surat' },
-  { id:'kabag_humas', label:'Kepala Bagian Humas', group:'Kepala Bagian', desc:'Tujuan akhir alur surat' },
+  { id:'sekretaris', label:'Sekretaris', group:'Sekretariat', desc:'Tracking lokasi & menginput disposisi Direksi' },
+  { id:'bagian_pengelolaan', label:'Bagian Pengelolaan', group:'Bagian', desc:'Tujuan akhir alur surat' },
+  { id:'bagian_umum', label:'Bagian Umum', group:'Bagian', desc:'Tujuan akhir alur surat' },
+  { id:'bagian_produksi', label:'Bagian Produksi', group:'Bagian', desc:'Tujuan akhir alur surat' },
+  { id:'bagian_keuangan', label:'Bagian Keuangan', group:'Bagian', desc:'Tujuan akhir alur surat' },
+  { id:'bagian_humas', label:'Bagian Humas', group:'Bagian', desc:'Tujuan akhir alur surat' },
 ];
 const ROLE_MAP = Object.fromEntries(ROLES.map(r => [r.id, r]));
-const DIREKTUR_BIDANG = ROLES.filter(r => ['dirum','dirops','dirkeu'].includes(r.id));
-const KEPALA_BAGIAN = ROLES.filter(r => r.id.startsWith('kabag_'));
+const BAGIAN_LIST = ROLES.filter(r => r.id.startsWith('bagian_'));
+
+// Semua TAHAP yang bisa dilalui surat (termasuk tahap Direksi yang tidak
+// punya akun login — disposisinya diinput oleh Sekretaris atas nama mereka).
+const DIREKTUR_BIDANG = [
+  { id:'dirum', label:'Direktur Umum' },
+  { id:'dirops', label:'Direktur Operasional' },
+  { id:'dirkeu', label:'Direktur Keuangan' },
+];
+const STAGE_META = {
+  resepsionis:      { emoji:'⚪', label:'Diterima di Resepsionis',            c:'#5C6B7A', t:'#EEF1F4' },
+  sekretaris:        { emoji:'🟣', label:'Dicatat oleh Sekretaris',            c:'#6A4FA0', t:'#F0EAF9' },
+  dirut:             { emoji:'🟠', label:'Diserahkan ke Direktur Utama',       c:'#B5650C', t:'#FCEEDD' },
+  dirum:             { emoji:'🟡', label:'Disposisi ke Direktur Umum',         c:'#A98307', t:'#FBF3D6' },
+  dirops:            { emoji:'🟡', label:'Disposisi ke Direktur Operasional',  c:'#A98307', t:'#FBF3D6' },
+  dirkeu:            { emoji:'🟡', label:'Disposisi ke Direktur Keuangan',     c:'#A98307', t:'#FBF3D6' },
+  bagian_pengelolaan:{ emoji:'🔵', label:'Disposisi ke Bagian Pengelolaan',    c:'#1B5E8A', t:'#E9F2F8' },
+  bagian_umum:       { emoji:'🔵', label:'Disposisi ke Bagian Umum',           c:'#1B5E8A', t:'#E9F2F8' },
+  bagian_produksi:   { emoji:'🔵', label:'Disposisi ke Bagian Produksi',       c:'#1B5E8A', t:'#E9F2F8' },
+  bagian_keuangan:   { emoji:'🔵', label:'Disposisi ke Bagian Keuangan',       c:'#1B5E8A', t:'#E9F2F8' },
+  bagian_humas:      { emoji:'🔵', label:'Disposisi ke Bagian Humas',          c:'#1B5E8A', t:'#E9F2F8' },
+  selesai:           { emoji:'🟢', label:'Diarsipkan',                        c:'#1F7A4D', t:'#E8F5EE' },
+};
 const SIFAT_OPT = [
   { id:'Biasa', color:'#5C6B7A', tint:'#EEF1F4' },
   { id:'Penting', color:'#A9700B', tint:'#FBF0DC' },
   { id:'Segera', color:'#B0291F', tint:'#FBEAE8' },
   { id:'Rahasia', color:'#0B3D63', tint:'#E8EFF6' },
 ];
-function roleLabel(id){ if(!id) return 'Belum Ditetapkan'; if(id==='selesai') return 'Selesai'; return (ROLE_MAP[id]&&ROLE_MAP[id].label)||id; }
-function stageColor(id){
-  if(id==='selesai') return {c:'#1F7A4D',t:'#E8F5EE'};
-  if(id==='resepsionis') return {c:'#5C6B7A',t:'#EEF1F4'};
-  if(id==='sekretaris') return {c:'#6A4FA0',t:'#F0EAF9'};
-  if(id==='dirut') return {c:'#0B3D63',t:'#E8EFF6'};
-  if(id && ['dirum','dirops','dirkeu'].includes(id)) return {c:'#1B5E8A',t:'#E9F2F8'};
-  if(id && id.startsWith('kabag_')) return {c:'#A9700B',t:'#FBF0DC'};
-  return {c:'#5C6B7A',t:'#EEF1F4'};
-}
+function stageMeta(id){ return STAGE_META[id] || { emoji:'⚪', label:id||'-', c:'#5C6B7A', t:'#EEF1F4' }; }
+function roleLabel(id){ if(!id) return 'Belum Ditetapkan'; return (ROLE_MAP[id] && ROLE_MAP[id].label) || stageMeta(id).label || id; }
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function fmtDate(d){ if(!d) return '-'; try{ return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return d; } }
 function fmtDateTime(d){ if(!d) return '-'; try{ return new Date(d).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+' WIB'; }catch(e){ return d; } }
+function genResi(){
+  const d = new Date();
+  const ymd = d.getFullYear().toString() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+  const rand = Array.from({length:5}, () => '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random()*34)]).join('');
+  return 'SMR-' + ymd + '-' + rand;
+}
 
 /* ============================= STATE ============================= */
 const State = {
   session: null, user: null, profile: null,
   authState: 'loading', // loading | login | no-role | ok
-  authMode: 'signin',   // signin | signup
+  authMode: 'signin',
   authError: '',
-  suratList: [],
-  profiles: [],
-  searchQ: '',
+  publicMode: false,    // true = halaman Lacak Surat publik (tanpa login)
+  trackResult: null, trackError: '', trackLoading: false,
+  suratList: [], profiles: [], searchQ: '',
   view: 'dashboard',
   detailId: null,
   filterQ: '', filterSifat: '',
@@ -105,6 +118,14 @@ const State = {
 /* ============================= APP LOGIC ============================= */
 const App = {
   async init() {
+    const params = new URLSearchParams(location.search);
+    if (params.get('lacak') !== null) {
+      State.publicMode = true;
+      const resi = params.get('resi');
+      render();
+      if (resi) App.trackSurat(resi);
+      return;
+    }
     render();
     const { data: { session } } = await sb.auth.getSession();
     await App.handleSession(session);
@@ -119,40 +140,49 @@ const App = {
     App.subscribeSurat();
     if (State.profile && State.profile.is_admin) App.subscribeProfiles();
   },
-
   async loadMyProfile() {
     const { data, error } = await sb.from('profiles').select('*').eq('id', State.user.id).maybeSingle();
-    if (error) { State.toast = { type:'error', msg:'Gagal memuat profil: ' + error.message }; }
+    if (error) State.toast = { type:'error', msg:'Gagal memuat profil: ' + error.message };
     State.profile = data || null;
     State.authState = (State.profile && State.profile.role) ? 'ok' : 'no-role';
     render();
   },
-
   subscribeSurat() {
     sb.from('surat').select('*').order('created_at', { ascending:false }).then(({ data, error }) => {
       if (!error) { State.suratList = data || []; render(); }
     });
-    sb.channel('surat-changes')
-      .on('postgres_changes', { event:'*', schema:'public', table:'surat' }, () => {
-        sb.from('surat').select('*').order('created_at', { ascending:false }).then(({ data }) => {
-          State.suratList = data || []; render();
-        });
-      }).subscribe();
+    sb.channel('surat-changes').on('postgres_changes', { event:'*', schema:'public', table:'surat' }, () => {
+      sb.from('surat').select('*').order('created_at', { ascending:false }).then(({ data }) => { State.suratList = data || []; render(); });
+    }).subscribe();
   },
   subscribeProfiles() {
     sb.from('profiles').select('*').order('created_at', { ascending:true }).then(({ data, error }) => {
       if (!error) { State.profiles = data || []; render(); }
     });
-    sb.channel('profiles-changes')
-      .on('postgres_changes', { event:'*', schema:'public', table:'profiles' }, () => {
-        sb.from('profiles').select('*').order('created_at', { ascending:true }).then(({ data }) => {
-          State.profiles = data || []; render();
-        });
-      }).subscribe();
+    sb.channel('profiles-changes').on('postgres_changes', { event:'*', schema:'public', table:'profiles' }, () => {
+      sb.from('profiles').select('*').order('created_at', { ascending:true }).then(({ data }) => { State.profiles = data || []; render(); });
+    }).subscribe();
+  },
+
+  /* --- Lacak Surat publik (tanpa login) --- */
+  enterPublicTrack() { State.publicMode = true; State.trackResult = null; State.trackError = ''; render(); },
+  exitPublicTrack() { State.publicMode = false; State.trackResult = null; State.trackError = ''; history.replaceState(null,'',location.pathname); render(); },
+  async submitTrack(ev) {
+    ev.preventDefault();
+    const code = ev.target.resi.value.trim().toUpperCase();
+    if (code) App.trackSurat(code);
+  },
+  async trackSurat(code) {
+    State.trackLoading = true; State.trackError = ''; State.trackResult = null; render();
+    const { data, error } = await sb.rpc('lacak_surat', { p_resi: code });
+    State.trackLoading = false;
+    if (error) { State.trackError = 'Terjadi kesalahan saat mencari data.'; render(); return; }
+    if (!data || !data.length) { State.trackError = 'Nomor resi tidak ditemukan. Periksa kembali kode yang Anda masukkan.'; render(); return; }
+    State.trackResult = data[0];
+    render();
   },
 
   toggleAuthMode() { State.authMode = State.authMode === 'signin' ? 'signup' : 'signin'; State.authError=''; render(); },
-
   async submitAuth(ev) {
     ev.preventDefault();
     const f = ev.target;
@@ -171,9 +201,7 @@ const App = {
         if (error) throw error;
         State.toast = { type:'success', msg:'Akun berhasil dibuat. Jika verifikasi email diaktifkan, cek email Anda sebelum masuk.' };
       }
-    } catch (e) {
-      State.authError = e.message || 'Terjadi kesalahan.';
-    }
+    } catch (e) { State.authError = e.message || 'Terjadi kesalahan.'; }
     btn.disabled = false;
     render();
   },
@@ -202,14 +230,14 @@ const App = {
     if (file) {
       const path = State.user.id + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
       const { error: upErr } = await sb.storage.from(LAMPIRAN_BUCKET).upload(path, file);
-      if (upErr) {
-        State.toast = { type:'error', msg:'Gagal mengunggah lampiran: ' + upErr.message + '. Surat tetap disimpan tanpa lampiran.' };
-      } else { lampiran_path = path; lampiran_name = file.name; }
+      if (upErr) State.toast = { type:'error', msg:'Gagal mengunggah lampiran: ' + upErr.message + '. Surat tetap disimpan tanpa lampiran.' };
+      else { lampiran_path = path; lampiran_name = file.name; }
     }
 
     const now = new Date().toISOString();
     const payload = {
       nomor_surat, tanggal_surat, tanggal_terima, pengirim, perihal, sifat: sifat || 'Biasa',
+      nomor_resi: genResi(),
       lampiran_path, lampiran_name,
       current_stage: 'sekretaris', selesai: false,
       riwayat: [
@@ -219,13 +247,13 @@ const App = {
       disposisi: [],
       created_by: State.user.id,
     };
-    const { error } = await sb.from('surat').insert(payload);
+    const { data, error } = await sb.from('surat').insert(payload).select().single();
     if (error) {
       State.toast = { type:'error', msg:'Gagal menyimpan surat: ' + error.message };
       btn.disabled = false; btn.textContent = 'Simpan & Catat Surat Masuk';
       render();
     } else {
-      State.toast = { type:'success', msg:'Surat ' + nomor_surat + ' berhasil dicatat.' };
+      State.toast = { type:'success', msg:'Surat ' + nomor_surat + ' berhasil dicatat. Nomor resi: ' + data.nomor_resi };
       App.goTo('dashboard');
     }
   },
@@ -237,22 +265,21 @@ const App = {
     const { error } = await sb.from('surat').update(patch).eq('id', id);
     if (error) { State.toast = { type:'error', msg:'Gagal memperbarui: ' + error.message }; render(); }
   },
-
   async forwardToDirut(id) {
     const now = new Date().toISOString();
     await App._patchSurat(id, s => ({
       current_stage:'dirut',
-      riwayat: (s.riwayat||[]).concat([{ waktu:now, posisi:'dirut', oleh:'Sekretaris', keterangan:'Ringkasan surat diteruskan ke Direktur Utama.' }]),
+      riwayat: (s.riwayat||[]).concat([{ waktu:now, posisi:'dirut', oleh:'Sekretaris', keterangan:'Ringkasan surat diserahkan kepada Direktur Utama.' }]),
     }));
-    State.toast = { type:'success', msg:'Surat diteruskan ke DIRUT.' }; render();
+    State.toast = { type:'success', msg:'Surat diserahkan ke Direktur Utama.' }; render();
   },
   async updateLokasi(id, ev) {
     ev.preventDefault();
-    const f = ev.target; const toRole = f.lokasi.value; const catatan = f.catatan.value.trim();
+    const f = ev.target; const toStage = f.lokasi.value; const catatan = f.catatan.value.trim();
     const now = new Date().toISOString();
     await App._patchSurat(id, s => ({
-      current_stage: toRole,
-      riwayat: (s.riwayat||[]).concat([{ waktu:now, posisi:toRole, oleh:'Sekretaris', keterangan: catatan || ('Lokasi fisik surat diperbarui secara manual oleh Sekretaris menjadi ' + roleLabel(toRole) + '.') }]),
+      current_stage: toStage,
+      riwayat: (s.riwayat||[]).concat([{ waktu:now, posisi:toStage, oleh:'Sekretaris', keterangan: catatan || ('Lokasi fisik surat diperbarui secara manual oleh Sekretaris menjadi ' + roleLabel(toStage) + '.') }]),
     }));
     State.toast = { type:'success', msg:'Lokasi surat diperbarui.' }; render();
   },
@@ -264,21 +291,21 @@ const App = {
     await App._patchSurat(id, s => ({
       current_stage: tujuan,
       disposisi: (s.disposisi||[]).concat([{ waktu:now, dari:'Direktur Utama', ke: roleLabel(tujuan), instruksi, catatan }]),
-      riwayat: (s.riwayat||[]).concat([{ waktu:now, posisi:tujuan, oleh:'Direktur Utama', keterangan:'Didisposisikan oleh DIRUT kepada ' + roleLabel(tujuan) + '.' }]),
+      riwayat: (s.riwayat||[]).concat([{ waktu:now, posisi:tujuan, oleh:'Sekretaris (a.n. Direktur Utama)', keterangan:'Didisposisikan oleh Direktur Utama kepada ' + roleLabel(tujuan) + '.' }]),
     }));
-    State.toast = { type:'success', msg:'Disposisi diteruskan ke ' + roleLabel(tujuan) + '.' }; render();
+    State.toast = { type:'success', msg:'Disposisi dicatat, diteruskan ke ' + roleLabel(tujuan) + '.' }; render();
   },
-  async submitDisposisiDirektur(id, fromRole, ev) {
+  async submitDisposisiDirektur(id, fromStage, ev) {
     ev.preventDefault();
     const f = ev.target; const tujuan = f.tujuan.value; const instruksi = f.instruksi.value.trim(); const catatan = f.catatan.value.trim();
     if (!tujuan || !instruksi) { State.toast = { type:'error', msg:'Pilih tujuan dan isi instruksi disposisi.' }; render(); return; }
-    const now = new Date().toISOString(); const fromLabel = roleLabel(fromRole);
+    const now = new Date().toISOString(); const fromLabel = roleLabel(fromStage);
     await App._patchSurat(id, s => ({
       current_stage: tujuan,
       disposisi: (s.disposisi||[]).concat([{ waktu:now, dari: fromLabel, ke: roleLabel(tujuan), instruksi, catatan }]),
-      riwayat: (s.riwayat||[]).concat([{ waktu:now, posisi:tujuan, oleh:fromLabel, keterangan:'Didisposisikan oleh ' + fromLabel + ' kepada ' + roleLabel(tujuan) + '.' }]),
+      riwayat: (s.riwayat||[]).concat([{ waktu:now, posisi:tujuan, oleh:'Sekretaris (a.n. ' + fromLabel + ')', keterangan:'Didisposisikan oleh ' + fromLabel + ' kepada ' + roleLabel(tujuan) + '.' }]),
     }));
-    State.toast = { type:'success', msg:'Disposisi diteruskan ke ' + roleLabel(tujuan) + '.' }; render();
+    State.toast = { type:'success', msg:'Disposisi dicatat, diteruskan ke ' + roleLabel(tujuan) + '.' }; render();
   },
   async selesaikanSurat(id, fromRole, ev) {
     ev.preventDefault();
@@ -286,11 +313,10 @@ const App = {
     const now = new Date().toISOString(); const label = roleLabel(fromRole);
     await App._patchSurat(id, s => ({
       current_stage:'selesai', selesai:true,
-      riwayat: (s.riwayat||[]).concat([{ waktu:now, posisi:'selesai', oleh:label, keterangan: catatan || ('Surat telah ditindaklanjuti dan dinyatakan selesai oleh ' + label + '.') }]),
+      riwayat: (s.riwayat||[]).concat([{ waktu:now, posisi:'selesai', oleh:label, keterangan: catatan || ('Surat telah ditindaklanjuti dan diarsipkan oleh ' + label + '.') }]),
     }));
-    State.toast = { type:'success', msg:'Surat dinyatakan selesai.' }; render();
+    State.toast = { type:'success', msg:'Surat diarsipkan.' }; render();
   },
-
   async printLembar(id) {
     const s = State.suratList.find(x => x.id === id);
     if (!s) return;
@@ -303,7 +329,6 @@ const App = {
     window.open(data.signedUrl, '_blank');
   },
 
-  /* --- Admin: kelola pengguna --- */
   async assignRole(userId, roleId) {
     const { error } = await sb.from('profiles').update({ role: roleId || null, updated_at: new Date().toISOString() }).eq('id', userId);
     State.toast = error ? { type:'error', msg:'Gagal menetapkan peran: ' + error.message } : { type:'success', msg:'Peran berhasil ditetapkan.' };
@@ -327,7 +352,7 @@ function Logo(size) {
 }
 function sifatMeta(s){ return SIFAT_OPT.find(x=>x.id===s) || SIFAT_OPT[0]; }
 function Badge(text,color,tint){ return `<span class="badge" style="color:${color};background:${tint};border:1px solid ${color}22;">${escapeHtml(text)}</span>`; }
-function StageBadge(id){ const m = stageColor(id); return Badge(roleLabel(id), m.c, m.t); }
+function StageBadge(id){ const m = stageMeta(id); return `<span class="badge" style="color:${m.c};background:${m.t};border:1px solid ${m.c}22;">${m.emoji} ${escapeHtml(m.label)}</span>`; }
 function Toast(){
   if (!State.toast) return '';
   const t = State.toast; const isErr = t.type === 'error';
@@ -336,26 +361,71 @@ function Toast(){
     <div class="flex-1">${escapeHtml(t.msg)}</div>
     <button onclick="App.dismissToast()" class="font-bold leading-none">&times;</button></div>`;
 }
-function LoginShell(inner) {
-  return `<div class="min-h-screen flex items-center justify-center px-4 py-10" style="background:var(--c-bg);">
-    <div class="w-full max-w-md">
-      <div class="flex flex-col items-center text-center mb-6">
-        ${Logo(64)}
-        <h1 class="font-display font-extrabold text-2xl mt-4" style="color:var(--c-primary);">SIMARA Perumda Parkir</h1>
-        <p class="text-sm mt-1" style="color:var(--c-ink-muted);">Sistem Informasi Manajemen Arsip &amp; Surat</p>
-      </div>
-      ${inner}
-    </div></div>`;
+function BrandHeader() {
+  return `<div class="flex flex-col items-center text-center mb-6">
+    ${Logo(64)}
+    <h1 class="font-display font-extrabold text-2xl mt-4" style="color:var(--c-primary);">SIMARA</h1>
+    <p class="text-sm font-semibold" style="color:var(--c-primary);">${escapeHtml(ORG_NAME)}</p>
+    <p class="text-xs mt-1" style="color:var(--c-ink-muted);">Sistem Informasi Manajemen Arsip &amp; Surat</p>
+  </div>`;
 }
+function Shell(inner) {
+  return `<div class="min-h-screen flex items-center justify-center px-4 py-10" style="background:var(--c-bg);">
+    <div class="w-full max-w-md">${BrandHeader()}${inner}</div></div>`;
+}
+
+/* --- Lacak Surat (PUBLIK, tanpa login) --- */
+function PublicTrackView() {
+  let resultBlock = '';
+  if (State.trackLoading) resultBlock = `<div class="text-sm text-center mt-4" style="color:var(--c-ink-muted);">Mencari...</div>`;
+  else if (State.trackError) resultBlock = `<div class="text-sm rounded-md px-3 py-2 mt-4" style="background:var(--c-danger-tint); color:var(--c-danger);">${escapeHtml(State.trackError)}</div>`;
+  else if (State.trackResult) {
+    const r = State.trackResult;
+    const sm = sifatMeta(r.sifat);
+    const items = (r.riwayat_publik || []).slice().sort((a,b)=>new Date(a.waktu)-new Date(b.waktu));
+    resultBlock = `
+    <div class="rounded-lg border p-4 mt-4 text-left" style="background:var(--c-surface); border-color:var(--c-border);">
+      <div class="text-xs" style="color:var(--c-ink-muted);">Nomor Resi</div>
+      <div class="font-display font-bold text-lg mb-2" style="color:var(--c-primary);">${escapeHtml(r.nomor_resi)}</div>
+      <div class="text-sm mb-1"><span class="font-medium">Perihal:</span> ${escapeHtml(r.perihal)}</div>
+      <div class="text-sm mb-1"><span class="font-medium">Tanggal Surat:</span> ${fmtDate(r.tanggal_surat)}</div>
+      <div class="text-sm mb-3"><span class="font-medium">Sifat:</span> ${Badge(sm.id, sm.color, sm.tint)}</div>
+      <div class="text-sm font-semibold mb-2" style="color:var(--c-primary);">Status Saat Ini</div>
+      <div class="mb-4">${StageBadge(r.current_stage)}</div>
+      <div class="text-sm font-semibold mb-2" style="color:var(--c-primary);">Riwayat Pergerakan</div>
+      <div>${items.map((it,i) => `
+        <div class="relative pl-8 pb-4">
+          ${i < items.length-1 ? '<div class="timeline-line" style="left:11px;"></div>' : ''}
+          <div class="absolute left-0 top-0.5 h-6 w-6 rounded-full flex items-center justify-center text-[10px]" style="background:${stageMeta(it.posisi).t};">${stageMeta(it.posisi).emoji}</div>
+          <div class="text-xs" style="color:var(--c-ink-muted);">${fmtDateTime(it.waktu)}</div>
+          <div class="text-sm font-medium">${escapeHtml(stageMeta(it.posisi).label)}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  return Shell(`
+    <div class="rounded-lg border p-5" style="background:var(--c-surface); border-color:var(--c-border);">
+      <div class="text-sm font-semibold mb-1" style="color:var(--c-primary);">Lacak Status Surat</div>
+      <p class="text-xs mb-3" style="color:var(--c-ink-muted);">Masukkan nomor resi yang tertera pada tanda terima surat Anda.</p>
+      <form onsubmit="App.submitTrack(event)" class="flex gap-2">
+        <input name="resi" required placeholder="mis. SMR-20260923-8F3K1" class="flex-1 rounded-md border px-3 py-2 text-sm uppercase" style="border-color:var(--c-border);">
+        <button type="submit" class="px-4 py-2 text-sm font-semibold rounded-md" style="background:var(--c-primary); color:white;">Lacak</button>
+      </form>
+      ${resultBlock}
+    </div>
+    <button onclick="App.exitPublicTrack()" class="w-full text-xs text-center mt-4" style="color:var(--c-ink-muted);">&larr; Kembali ke halaman masuk staf</button>
+  `);
+}
+
 function LoginView() {
   const isSignup = State.authMode === 'signup';
-  return LoginShell(`
+  return Shell(`
     <form onsubmit="App.submitAuth(event)" class="rounded-lg border p-5 space-y-3" style="background:var(--c-surface); border-color:var(--c-border);">
       <div class="text-sm font-semibold mb-1" style="color:var(--c-primary);">${isSignup ? 'Daftar Akun Baru' : 'Masuk ke SIMARA'}</div>
       ${isSignup ? `<div><label class="block text-xs font-semibold mb-1">Nama Lengkap</label>
         <input name="full_name" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>` : ''}
       <div><label class="block text-xs font-semibold mb-1">Email</label>
-        <input type="email" name="email" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);" placeholder="nama@perumdaparkir.id"></div>
+        <input type="email" name="email" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
       <div><label class="block text-xs font-semibold mb-1">Kata Sandi</label>
         <input type="password" name="password" required minlength="6" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
       ${State.authError ? `<div class="text-xs rounded-md px-3 py-2" style="background:var(--c-danger-tint); color:var(--c-danger);">${escapeHtml(State.authError)}</div>` : ''}
@@ -364,23 +434,25 @@ function LoginView() {
         ${isSignup ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar Akun Baru'}
       </button>
     </form>
+    <button onclick="App.enterPublicTrack()" class="w-full mt-4 rounded-md border py-2.5 text-sm font-semibold" style="border-color:var(--c-accent); color:var(--c-accent-dark); background:var(--c-accent-tint);">
+      🔍 Lacak Status Surat (Publik, tanpa login)
+    </button>
     <p class="text-xs text-center mt-4" style="color:var(--c-ink-muted);">Akun baru belum memiliki peran sampai ditetapkan oleh administrator SIMARA.</p>`);
 }
 function NoRoleView() {
-  return LoginShell(`
-    <div class="rounded-lg border p-5 text-center" style="background:var(--c-surface); border-color:var(--c-border);">
-      <div class="text-sm font-semibold mb-1" style="color:var(--c-primary);">Halo, ${escapeHtml((State.profile && State.profile.full_name) || State.user.email)}</div>
-      <p class="text-sm" style="color:var(--c-ink-muted);">Akun Anda sudah terdaftar namun belum ditetapkan perannya. Hubungi administrator SIMARA untuk penetapan peran.</p>
-      <button onclick="App.logout()" class="mt-4 text-xs underline" style="color:var(--c-ink-muted);">Keluar</button>
-    </div>`);
+  return Shell(`<div class="rounded-lg border p-5 text-center" style="background:var(--c-surface); border-color:var(--c-border);">
+    <div class="text-sm font-semibold mb-1" style="color:var(--c-primary);">Halo, ${escapeHtml((State.profile && State.profile.full_name) || State.user.email)}</div>
+    <p class="text-sm" style="color:var(--c-ink-muted);">Akun Anda sudah terdaftar namun belum ditetapkan perannya. Hubungi administrator SIMARA.</p>
+    <button onclick="App.logout()" class="mt-4 text-xs underline" style="color:var(--c-ink-muted);">Keluar</button>
+  </div>`);
 }
 function Navbar() {
   const role = State.profile ? ROLE_MAP[State.profile.role] : null;
   return `<header class="sticky top-0 z-40 border-b" style="background:var(--c-primary); border-color:var(--c-primary-dark);">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3">${Logo(42)}
-        <div><div class="font-display font-bold text-white text-lg leading-tight">SIMARA <span class="font-medium opacity-80 text-sm">Perumda Parkir</span></div>
-        <div class="text-[11px] text-white/70 leading-tight">Sistem Informasi Manajemen Arsip &amp; Surat</div></div>
+        <div><div class="font-display font-bold text-white text-lg leading-tight">SIMARA</div>
+        <div class="text-[11px] text-white/70 leading-tight">${escapeHtml(ORG_NAME)}</div></div>
       </div>
       <div class="flex items-center gap-3">
         <div class="text-right hidden sm:block">
@@ -414,17 +486,17 @@ function SuratTable(list, opts) {
   return `<div class="rounded-lg border overflow-hidden" style="background:var(--c-surface); border-color:var(--c-border);">
     <table class="w-full text-sm"><thead><tr style="background:var(--c-primary-tint);">
       <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Nomor Surat</th>
-      <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Tanggal</th>
+      <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Resi</th>
       <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Pengirim</th>
       <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Perihal</th>
       <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Sifat</th>
-      <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Posisi</th>
+      <th class="text-left font-semibold px-4 py-2.5" style="color:var(--c-primary);">Status</th>
       <th class="text-right font-semibold px-4 py-2.5" style="color:var(--c-primary);"></th></tr></thead>
       <tbody>${list.map(s=>{ const sm=sifatMeta(s.sifat); return `<tr class="border-t" style="border-color:var(--c-border);">
         <td class="px-4 py-3 font-medium">${escapeHtml(s.nomor_surat)}</td>
-        <td class="px-4 py-3" style="color:var(--c-ink-muted);">${fmtDate(s.tanggal_surat)}</td>
+        <td class="px-4 py-3 text-xs" style="color:var(--c-ink-muted);">${escapeHtml(s.nomor_resi||'-')}</td>
         <td class="px-4 py-3">${escapeHtml(s.pengirim)}</td>
-        <td class="px-4 py-3 max-w-[220px] truncate" title="${escapeHtml(s.perihal)}">${escapeHtml(s.perihal)}</td>
+        <td class="px-4 py-3 max-w-[200px] truncate" title="${escapeHtml(s.perihal)}">${escapeHtml(s.perihal)}</td>
         <td class="px-4 py-3">${Badge(sm.id,sm.color,sm.tint)}</td>
         <td class="px-4 py-3">${StageBadge(s.current_stage)}</td>
         <td class="px-4 py-3 text-right"><button onclick="App.goTo('detail','${s.id}')" class="text-xs font-semibold px-3 py-1.5 rounded-md" style="color:white; background:var(--c-primary);">Lihat</button></td>
@@ -435,29 +507,29 @@ function Dashboard() {
   const mine = State.suratList.filter(s => s.current_stage === role);
   const selesai = State.suratList.filter(s => s.selesai);
   const total = State.suratList.length;
-  const note = role==='sekretaris' ? `<p class="text-sm mt-1" style="color:var(--c-ink-muted);">Sebagai Sekretaris, Anda juga bisa memperbarui lokasi fisik surat kapan pun dari halaman detail.</p>` : '';
+  const note = role==='sekretaris' ? `<p class="text-sm mt-1" style="color:var(--c-ink-muted);">Sebagai Sekretaris, Anda mencatat tracking lokasi surat dan menginput disposisi atas nama Direktur Utama & Direktur Bidang (yang tidak memegang akun), lalu meneruskannya ke Bagian terkait.</p>` : '';
   return `<div class="max-w-6xl mx-auto px-4 py-6 space-y-6">
     <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Meja Saya</h1>
-    <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Surat pada tahap ${escapeHtml(roleLabel(role))} yang menunggu tindak lanjut Anda.</p>${note}</div>
+    <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Surat pada tahap ${roleLabel(role)} yang menunggu tindak lanjut Anda.</p>${note}</div>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
       ${StatCard('Total Surat', total, 'var(--c-primary)')}
       ${StatCard('Menunggu di Meja Saya', mine.length, 'var(--c-accent-dark)')}
       ${StatCard('Dalam Proses', total-selesai.length, 'var(--c-primary)')}
-      ${StatCard('Selesai', selesai.length, 'var(--c-success)')}
+      ${StatCard('Diarsipkan', selesai.length, 'var(--c-success)')}
     </div>
     ${SuratTable(mine, {emptyText:'Tidak ada surat yang menunggu tindak lanjut Anda saat ini.'})}
   </div>`;
 }
 function SemuaSurat() {
   let list = State.suratList.slice();
-  if (State.filterQ) { const q=State.filterQ.toLowerCase(); list = list.filter(s => (s.nomor_surat||'').toLowerCase().includes(q) || (s.pengirim||'').toLowerCase().includes(q) || (s.perihal||'').toLowerCase().includes(q)); }
+  if (State.filterQ) { const q=State.filterQ.toLowerCase(); list = list.filter(s => (s.nomor_surat||'').toLowerCase().includes(q) || (s.pengirim||'').toLowerCase().includes(q) || (s.perihal||'').toLowerCase().includes(q) || (s.nomor_resi||'').toLowerCase().includes(q)); }
   if (State.filterSifat) list = list.filter(s => s.sifat === State.filterSifat);
   return `<div class="max-w-6xl mx-auto px-4 py-6 space-y-4">
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Semua Surat</h1>
       <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Arsip lengkap surat masuk beserta status dan posisi terkini.</p></div>
       <div class="flex gap-2">
-        <input onkeyup="State.filterQ=this.value; App._render();" value="${escapeHtml(State.filterQ)}" placeholder="Cari nomor / pengirim / perihal..." class="rounded-md border px-3 py-2 text-sm w-56" style="border-color:var(--c-border);">
+        <input onkeyup="State.filterQ=this.value; App._render();" value="${escapeHtml(State.filterQ)}" placeholder="Cari nomor / resi / pengirim / perihal..." class="rounded-md border px-3 py-2 text-sm w-64" style="border-color:var(--c-border);">
         <select onchange="State.filterSifat=this.value; App._render();" class="rounded-md border px-2 py-2 text-sm" style="border-color:var(--c-border);">
           <option value="">Semua Sifat</option>${SIFAT_OPT.map(s=>`<option value="${s.id}" ${State.filterSifat===s.id?'selected':''}>${s.id}</option>`).join('')}
         </select>
@@ -471,7 +543,7 @@ function InputSurat() {
   const today = new Date().toISOString().slice(0,10);
   return `<div class="max-w-2xl mx-auto px-4 py-6">
     <h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Input Surat Masuk</h1>
-    <p class="text-sm mt-0.5 mb-5" style="color:var(--c-ink-muted);">Catat detail surat masuk beserta lampiran berkas/PDF.</p>
+    <p class="text-sm mt-0.5 mb-5" style="color:var(--c-ink-muted);">Nomor resi pelacakan publik akan dibuat otomatis saat surat disimpan.</p>
     <form onsubmit="App.submitSurat(event)" class="rounded-lg border p-5 space-y-4" style="background:var(--c-surface); border-color:var(--c-border);">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div><label class="block text-xs font-semibold mb-1">Nomor Surat *</label>
@@ -500,9 +572,9 @@ function AksesDitolak(){ return `<div class="max-w-2xl mx-auto px-4 py-16 text-c
     <button onclick="App.goTo('dashboard')" class="mt-4 text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">Kembali ke Meja Saya</button></div>`; }
 function Timeline(riwayat) {
   const items = (riwayat||[]).slice().sort((a,b)=>new Date(a.waktu)-new Date(b.waktu));
-  return `<div>${items.map((r,i)=>{ const m=stageColor(r.posisi); const isLast=i===items.length-1;
+  return `<div>${items.map((r,i)=>{ const m=stageMeta(r.posisi); const isLast=i===items.length-1;
     return `<div class="relative pl-10 pb-6">${!isLast?'<div class="timeline-line"></div>':''}
-      <div class="absolute left-0 top-0 h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold" style="background:${m.t}; color:${m.c}; border:2px solid ${m.c};">${i+1}</div>
+      <div class="absolute left-0 top-0 h-8 w-8 rounded-full flex items-center justify-center text-sm" style="background:${m.t}; border:2px solid ${m.c};">${m.emoji}</div>
       <div class="rounded-lg border p-3" style="background:var(--c-surface); border-color:var(--c-border);">
         <div class="flex items-center justify-between flex-wrap gap-1"><div>${StageBadge(r.posisi)}</div><div class="text-xs" style="color:var(--c-ink-muted);">${fmtDateTime(r.waktu)}</div></div>
         <div class="text-sm mt-1.5">${escapeHtml(r.keterangan)}</div>
@@ -523,39 +595,41 @@ function ActionPanel(s) {
   const panels = [];
   if (role === 'sekretaris') {
     if (s.current_stage === 'sekretaris') panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
-      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Teruskan ke Direktur Utama</div>
-      <button onclick="App.forwardToDirut('${s.id}')" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">Teruskan ke DIRUT</button></div>`);
+      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Serahkan ke Direktur Utama</div>
+      <button onclick="App.forwardToDirut('${s.id}')" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">🟠 Serahkan ke DIRUT</button></div>`);
+    if (s.current_stage === 'dirut') panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
+      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Catat Disposisi Direktur Utama</div>
+      <p class="text-xs mb-2" style="color:var(--c-ink-muted);">Input instruksi disposisi yang disampaikan DIRUT, teruskan ke Direktur Bidang terkait.</p>
+      <form onsubmit="App.submitDisposisiDirut('${s.id}', event)" class="space-y-2">
+        <select name="tujuan" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"><option value="">Pilih Direktur Bidang...</option>${DIREKTUR_BIDANG.map(r=>`<option value="${r.id}">${r.label}</option>`).join('')}</select>
+        <textarea name="instruksi" required rows="2" placeholder="Instruksi disposisi *" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
+        <input name="catatan" placeholder="Catatan tambahan (opsional)" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
+        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">🟡 Kirim Disposisi</button>
+      </form></div>`);
+    if (DIREKTUR_BIDANG.some(r => r.id === s.current_stage)) panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
+      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Catat Disposisi ${roleLabel(s.current_stage)}</div>
+      <p class="text-xs mb-2" style="color:var(--c-ink-muted);">Input instruksi disposisi ke Bagian terkait.</p>
+      <form onsubmit="App.submitDisposisiDirektur('${s.id}', '${s.current_stage}', event)" class="space-y-2">
+        <select name="tujuan" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"><option value="">Pilih Bagian...</option>${BAGIAN_LIST.map(r=>`<option value="${r.id}">${r.label}</option>`).join('')}</select>
+        <textarea name="instruksi" required rows="2" placeholder="Instruksi disposisi *" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
+        <input name="catatan" placeholder="Catatan tambahan (opsional)" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
+        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">🔵 Kirim Disposisi</button>
+      </form></div>`);
     panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
-      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Perbarui Lokasi Fisik (Tracking)</div>
+      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Perbarui Lokasi Fisik (Tracking Manual)</div>
       <form onsubmit="App.updateLokasi('${s.id}', event)" class="space-y-2">
         <select name="lokasi" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-          ${['resepsionis','sekretaris','dirut',...DIREKTUR_BIDANG.map(r=>r.id),...KEPALA_BAGIAN.map(r=>r.id),'selesai'].map(id=>`<option value="${id}" ${s.current_stage===id?'selected':''}>${roleLabel(id)}</option>`).join('')}
+          ${['resepsionis','sekretaris','dirut',...DIREKTUR_BIDANG.map(r=>r.id),...BAGIAN_LIST.map(r=>r.id),'selesai'].map(id=>`<option value="${id}" ${s.current_stage===id?'selected':''}>${roleLabel(id)}</option>`).join('')}
         </select>
         <input name="catatan" placeholder="Catatan (opsional)" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
         <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-accent); color:var(--c-primary-dark);">Perbarui Lokasi</button>
       </form></div>`);
   }
-  if (role === 'dirut' && s.current_stage === 'dirut') panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
-      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Disposisi ke Direktur Bidang</div>
-      <form onsubmit="App.submitDisposisiDirut('${s.id}', event)" class="space-y-2">
-        <select name="tujuan" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"><option value="">Pilih Direktur Bidang...</option>${DIREKTUR_BIDANG.map(r=>`<option value="${r.id}">${r.label}</option>`).join('')}</select>
-        <textarea name="instruksi" required rows="2" placeholder="Instruksi disposisi *" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
-        <input name="catatan" placeholder="Catatan tambahan (opsional)" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">Kirim Disposisi</button>
-      </form></div>`);
-  if (DIREKTUR_BIDANG.some(r=>r.id===role) && s.current_stage===role) panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
-      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Disposisi ke Kepala Bagian</div>
-      <form onsubmit="App.submitDisposisiDirektur('${s.id}', '${role}', event)" class="space-y-2">
-        <select name="tujuan" required class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"><option value="">Pilih Kepala Bagian...</option>${KEPALA_BAGIAN.map(r=>`<option value="${r.id}">${r.label}</option>`).join('')}</select>
-        <textarea name="instruksi" required rows="2" placeholder="Instruksi disposisi *" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
-        <input name="catatan" placeholder="Catatan tambahan (opsional)" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-primary); color:white;">Kirim Disposisi</button>
-      </form></div>`);
-  if (KEPALA_BAGIAN.some(r=>r.id===role) && s.current_stage===role) panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
-      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Tindak Lanjut &amp; Penyelesaian</div>
+  if (BAGIAN_LIST.some(r=>r.id===role) && s.current_stage===role) panels.push(`<div class="rounded-lg border p-4" style="background:var(--c-surface); border-color:var(--c-border);">
+      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Tindak Lanjut &amp; Pengarsipan</div>
       <form onsubmit="App.selesaikanSurat('${s.id}', '${role}', event)" class="space-y-2">
         <textarea name="catatan" rows="2" placeholder="Catatan tindak lanjut (opsional)" class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-success); color:white;">Tandai Selesai</button>
+        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-md" style="background:var(--c-success); color:white;">🟢 Tandai Diarsipkan</button>
       </form></div>`);
   if (!panels.length) return `<div class="text-sm rounded-lg border p-4" style="border-color:var(--c-border); color:var(--c-ink-muted);">Tidak ada tindakan yang tersedia untuk peran Anda pada surat ini saat ini.</div>`;
   return panels.join('');
@@ -570,7 +644,8 @@ function DetailSurat() {
       <div><div class="flex items-center gap-2 flex-wrap">
         <h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">${escapeHtml(s.nomor_surat)}</h1>
         ${Badge(sm.id,sm.color,sm.tint)}${StageBadge(s.current_stage)}</div>
-        <p class="text-sm mt-1" style="color:var(--c-ink-muted);">${escapeHtml(s.perihal)}</p></div>
+        <p class="text-sm mt-1" style="color:var(--c-ink-muted);">${escapeHtml(s.perihal)}</p>
+        <p class="text-xs mt-1" style="color:var(--c-ink-muted);">Nomor Resi: <span class="font-mono font-semibold">${escapeHtml(s.nomor_resi||'-')}</span></p></div>
       <button onclick="App.printLembar('${s.id}')" class="text-sm font-semibold px-4 py-2 rounded-md border" style="border-color:var(--c-primary); color:var(--c-primary);">Cetak Lembar Disposisi</button>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -600,7 +675,7 @@ function AdminPanel() {
   const rows = State.profiles.filter(p => !q || (p.full_name||'').toLowerCase().includes(q) || (p.email||'').toLowerCase().includes(q));
   return `<div class="max-w-3xl mx-auto px-4 py-6 space-y-4">
     <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Kelola Pengguna &amp; Peran</h1>
-    <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Tetapkan peran SIMARA untuk setiap akun terdaftar. Akun tanpa peran tidak dapat mengakses data surat.</p></div>
+    <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Hanya akun Resepsionis, Sekretaris, dan tiap Bagian yang perlu ditetapkan perannya.</p></div>
     <input oninput="State.searchQ=this.value; App._render();" value="${escapeHtml(State.searchQ)}" placeholder="Cari nama / email..." class="w-full rounded-md border px-3 py-2 text-sm" style="border-color:var(--c-border);">
     <div class="rounded-lg border divide-y" style="background:var(--c-surface); border-color:var(--c-border);">
       ${rows.map(p => `<div class="flex flex-wrap items-center gap-2 p-3">
@@ -621,28 +696,28 @@ function AdminPanel() {
 }
 function buildPrintHtml(s) {
   const disposisiRows = (s.disposisi||[]).map(d=>`<tr><td style="border:1px solid #999;padding:6px 8px;">${fmtDateTime(d.waktu)}</td><td style="border:1px solid #999;padding:6px 8px;">${escapeHtml(d.dari)}</td><td style="border:1px solid #999;padding:6px 8px;">${escapeHtml(d.ke)}</td><td style="border:1px solid #999;padding:6px 8px;">${escapeHtml(d.instruksi)}${d.catatan?'<br><em>Catatan: '+escapeHtml(d.catatan)+'</em>':''}</td></tr>`).join('') || `<tr><td colspan="4" style="border:1px solid #999;padding:8px;text-align:center;color:#777;">Belum ada disposisi</td></tr>`;
-  const riwayatRows = (s.riwayat||[]).slice().sort((a,b)=>new Date(a.waktu)-new Date(b.waktu)).map(r=>`<tr><td style="border:1px solid #999;padding:5px 8px;">${fmtDateTime(r.waktu)}</td><td style="border:1px solid #999;padding:5px 8px;">${escapeHtml(roleLabel(r.posisi))}</td><td style="border:1px solid #999;padding:5px 8px;">${escapeHtml(r.keterangan)}</td></tr>`).join('');
+  const riwayatRows = (s.riwayat||[]).slice().sort((a,b)=>new Date(a.waktu)-new Date(b.waktu)).map(r=>`<tr><td style="border:1px solid #999;padding:5px 8px;">${fmtDateTime(r.waktu)}</td><td style="border:1px solid #999;padding:5px 8px;">${escapeHtml(stageMeta(r.posisi).emoji + ' ' + roleLabel(r.posisi))}</td><td style="border:1px solid #999;padding:5px 8px;">${escapeHtml(r.keterangan)}</td></tr>`).join('');
   return `<div style="font-family:'Inter',Arial,sans-serif;color:#111;font-size:12px;">
     <div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #0B3D63;padding-bottom:10px;margin-bottom:14px;">
       <div style="width:44px;height:44px;border-radius:10px;background:#0B3D63;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;">PP</div>
-      <div><div style="font-weight:800;font-size:16px;color:#0B3D63;">PERUMDA PARKIR</div><div style="font-size:11px;color:#555;">SIMARA &mdash; Sistem Informasi Manajemen Arsip &amp; Surat</div></div>
+      <div><div style="font-weight:800;font-size:15px;color:#0B3D63;">${escapeHtml(ORG_NAME.toUpperCase())}</div><div style="font-size:11px;color:#555;">SIMARA &mdash; Sistem Informasi Manajemen Arsip &amp; Surat</div></div>
       <div style="margin-left:auto;text-align:right;"><div style="font-weight:700;font-size:14px;">LEMBAR DISPOSISI</div><div style="font-size:11px;color:#555;">Dicetak: ${fmtDateTime(new Date().toISOString())}</div></div>
     </div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12px;">
-      <tr><td style="width:140px;padding:4px 0;color:#555;">Nomor Surat</td><td style="padding:4px 0;font-weight:600;">: ${escapeHtml(s.nomor_surat)}</td><td style="width:140px;padding:4px 0;color:#555;">Sifat</td><td style="padding:4px 0;font-weight:600;">: ${escapeHtml(s.sifat)}</td></tr>
-      <tr><td style="padding:4px 0;color:#555;">Tanggal Surat</td><td style="padding:4px 0;">: ${fmtDate(s.tanggal_surat)}</td><td style="padding:4px 0;color:#555;">Tanggal Diterima</td><td style="padding:4px 0;">: ${fmtDate(s.tanggal_terima)}</td></tr>
+      <tr><td style="width:140px;padding:4px 0;color:#555;">Nomor Surat</td><td style="padding:4px 0;font-weight:600;">: ${escapeHtml(s.nomor_surat)}</td><td style="width:140px;padding:4px 0;color:#555;">Nomor Resi</td><td style="padding:4px 0;font-weight:600;">: ${escapeHtml(s.nomor_resi||'-')}</td></tr>
+      <tr><td style="padding:4px 0;color:#555;">Tanggal Surat</td><td style="padding:4px 0;">: ${fmtDate(s.tanggal_surat)}</td><td style="padding:4px 0;color:#555;">Sifat</td><td style="padding:4px 0;">: ${escapeHtml(s.sifat)}</td></tr>
       <tr><td style="padding:4px 0;color:#555;">Pengirim</td><td style="padding:4px 0;" colspan="3">: ${escapeHtml(s.pengirim)}</td></tr>
       <tr><td style="padding:4px 0;color:#555;vertical-align:top;">Perihal</td><td style="padding:4px 0;" colspan="3">: ${escapeHtml(s.perihal)}</td></tr>
-      <tr><td style="padding:4px 0;color:#555;">Status Saat Ini</td><td style="padding:4px 0;font-weight:600;" colspan="3">: ${escapeHtml(roleLabel(s.current_stage))}</td></tr>
+      <tr><td style="padding:4px 0;color:#555;">Status Saat Ini</td><td style="padding:4px 0;font-weight:600;" colspan="3">: ${escapeHtml(stageMeta(s.current_stage).emoji + ' ' + stageMeta(s.current_stage).label)}</td></tr>
     </table>
     <div style="font-weight:700;margin-bottom:6px;">Instruksi Disposisi</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px;"><thead><tr style="background:#E8EFF6;"><th style="border:1px solid #999;padding:6px 8px;text-align:left;">Waktu</th><th style="border:1px solid #999;padding:6px 8px;text-align:left;">Dari</th><th style="border:1px solid #999;padding:6px 8px;text-align:left;">Kepada</th><th style="border:1px solid #999;padding:6px 8px;text-align:left;">Instruksi / Catatan</th></tr></thead><tbody>${disposisiRows}</tbody></table>
     <div style="font-weight:700;margin-bottom:6px;">Riwayat Pergerakan Surat</div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;"><thead><tr style="background:#E8EFF6;"><th style="border:1px solid #999;padding:5px 8px;text-align:left;">Waktu</th><th style="border:1px solid #999;padding:5px 8px;text-align:left;">Posisi</th><th style="border:1px solid #999;padding:5px 8px;text-align:left;">Keterangan</th></tr></thead><tbody>${riwayatRows}</tbody></table>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;"><thead><tr style="background:#E8EFF6;"><th style="border:1px solid #999;padding:5px 8px;text-align:left;">Waktu</th><th style="border:1px solid #999;padding:5px 8px;text-align:left;">Status</th><th style="border:1px solid #999;padding:5px 8px;text-align:left;">Keterangan</th></tr></thead><tbody>${riwayatRows}</tbody></table>
     <table style="width:100%;margin-top:30px;"><tr>
       <td style="width:33%;text-align:center;font-size:12px;"><div style="margin-bottom:50px;">Sekretaris</div><div style="border-top:1px solid #333;padding-top:4px;">(&nbsp;.....................&nbsp;)</div></td>
       <td style="width:33%;text-align:center;font-size:12px;"><div style="margin-bottom:50px;">Direktur Utama</div><div style="border-top:1px solid #333;padding-top:4px;">(&nbsp;.....................&nbsp;)</div></td>
-      <td style="width:33%;text-align:center;font-size:12px;"><div style="margin-bottom:50px;">Kepala Bagian Terkait</div><div style="border-top:1px solid #333;padding-top:4px;">(&nbsp;.....................&nbsp;)</div></td>
+      <td style="width:33%;text-align:center;font-size:12px;"><div style="margin-bottom:50px;">Bagian Terkait</div><div style="border-top:1px solid #333;padding-top:4px;">(&nbsp;.....................&nbsp;)</div></td>
     </tr></table></div>`;
 }
 
@@ -650,7 +725,8 @@ function buildPrintHtml(s) {
 function render(){ App._render(); }
 App._render = function() {
   const el = document.getElementById('app');
-  if (State.authState === 'loading') { el.innerHTML = LoginShell('<div class="text-sm text-center" style="color:var(--c-ink-muted);">Memuat...</div>') + Toast(); return; }
+  if (State.publicMode) { el.innerHTML = PublicTrackView() + Toast(); return; }
+  if (State.authState === 'loading') { el.innerHTML = Shell('<div class="text-sm text-center" style="color:var(--c-ink-muted);">Memuat...</div>') + Toast(); return; }
   if (State.authState === 'login') { el.innerHTML = LoginView() + Toast(); return; }
   if (State.authState === 'no-role') { el.innerHTML = NoRoleView() + Toast(); return; }
   let body = '';
