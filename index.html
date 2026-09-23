@@ -611,21 +611,21 @@ function Navbar() {
 }
 function TabBar() {
   const role = State.profile.role;
-  const tabs = [{id:'dashboard',label:'Meja Saya'},{id:'semua',label:'Semua Surat'}];
-  if (role === 'resepsionis') tabs.push({id:'input',label:'+ Input Surat Masuk'});
-  if (State.profile.is_admin) tabs.push({id:'admin',label:'Kelola Pengguna'});
+  const tabs = [{id:'dashboard',label:'Meja Saya',icon:'📥'},{id:'semua',label:'Semua Surat',icon:'🗂️'}];
+  if (role === 'resepsionis') tabs.push({id:'input',label:'Input Surat',icon:'✍️'});
+  if (State.profile.is_admin) tabs.push({id:'admin',label:'Kelola Pengguna',icon:'👥'});
   return `<div style="background:var(--c-surface); border-bottom:1px solid var(--c-border); box-shadow:0 1px 0 rgba(11,61,99,.02);">
-    <div class="max-w-6xl mx-auto px-4 flex gap-1 overflow-x-auto">
-      ${tabs.map(t=>`<button onclick="App.goTo('${t.id}')" class="relative px-4 py-3.5 text-sm font-semibold whitespace-nowrap"
-        style="color:${State.view===t.id?'var(--c-primary)':'var(--c-ink-muted)'};">${escapeHtml(t.label)}
-        ${State.view===t.id ? `<span style="position:absolute; left:8px; right:8px; bottom:-1px; height:3px; border-radius:3px; background:linear-gradient(90deg, var(--c-accent), var(--c-accent-dark));"></span>` : ''}
+    <div class="max-w-6xl mx-auto px-4 py-2.5 flex gap-1.5 overflow-x-auto">
+      ${tabs.map(t=>`<button onclick="App.goTo('${t.id}')" class="px-3.5 py-2 text-sm font-semibold whitespace-nowrap rounded-lg inline-flex items-center gap-1.5 hover-lift"
+        style="color:${State.view===t.id?'#fff':'var(--c-ink-muted)'}; background:${State.view===t.id?'linear-gradient(135deg,#0E4A78,var(--c-primary))':'transparent'};">
+        <span>${t.icon}</span>${escapeHtml(t.label)}
         </button>`).join('')}
     </div></div>`;
 }
-function StatCard(label,value,color,emoji){ return `<div class="rounded-xl border p-4 hover-lift" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:var(--shadow-sm);">
+function StatCard(label,value,color,emoji){ return `<div class="rounded-xl p-4 hover-lift" style="background:var(--c-surface); border:1px solid var(--c-border); border-left:4px solid ${color}; box-shadow:var(--shadow-sm);">
     <div class="flex items-center justify-between">
       <div class="text-xs font-medium" style="color:var(--c-ink-muted);">${escapeHtml(label)}</div>
-      <div class="h-7 w-7 rounded-full flex items-center justify-center text-xs" style="background:${color}18;">${emoji||''}</div>
+      <div class="h-8 w-8 rounded-full flex items-center justify-center text-sm" style="background:${color}18;">${emoji||''}</div>
     </div>
     <div class="font-display font-extrabold text-2xl mt-1.5" style="color:${color};">${value}</div></div>`; }
 function SuratTable(list, opts) {
@@ -657,10 +657,15 @@ function Dashboard() {
   const mine = State.suratList.filter(s => s.current_stage === role);
   const selesai = State.suratList.filter(s => s.selesai);
   const total = State.suratList.length;
-  const note = role==='sekretaris' ? `<p class="text-sm mt-1" style="color:var(--c-ink-muted);">Sebagai Sekretaris, Anda mencatat tracking lokasi surat dan menginput disposisi atas nama Direktur Utama & Direktur Bidang (yang tidak memegang akun), lalu meneruskannya ke Bagian terkait.</p>` : '';
+  const note = role==='sekretaris' ? `<p class="text-sm mt-2" style="color:rgba(255,255,255,.85);">Sebagai Sekretaris, Anda mencatat tracking lokasi surat dan menginput disposisi atas nama Direktur Utama &amp; Direktur Bidang (yang tidak memegang akun), lalu meneruskannya ke Bagian terkait.</p>` : '';
+  const firstName = ((State.profile.full_name || '').split(' ')[0]) || 'Anda';
   return `<div class="max-w-6xl mx-auto px-4 py-6 space-y-6">
-    <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Meja Saya</h1>
-    <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Surat pada tahap ${roleLabel(role)} yang menunggu tindak lanjut Anda.</p>${note}</div>
+    <div class="rounded-2xl p-6" style="background:linear-gradient(135deg,#0E4A78,var(--c-primary) 60%,var(--c-primary-dark)); box-shadow:var(--shadow-md);">
+      <span class="pill" style="background:rgba(255,255,255,.15); color:#fff;">${escapeHtml(roleLabel(role))}</span>
+      <h1 class="font-display font-extrabold text-white text-2xl mt-3">Halo, ${escapeHtml(firstName)} 👋</h1>
+      <p class="text-sm mt-1" style="color:rgba(255,255,255,.8);">Surat pada tahap ${roleLabel(role)} yang menunggu tindak lanjut Anda.</p>
+      ${note}
+    </div>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
       ${StatCard('Total Surat', total, 'var(--c-primary)', '📨')}
       ${StatCard('Menunggu di Meja Saya', mine.length, 'var(--c-accent-dark)', '⏳')}
@@ -676,7 +681,7 @@ function SemuaSurat() {
   if (State.filterSifat) list = list.filter(s => s.sifat === State.filterSifat);
   return `<div class="max-w-6xl mx-auto px-4 py-6 space-y-4">
     <div class="flex items-center justify-between flex-wrap gap-3">
-      <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Semua Surat</h1>
+      <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">🗂️ Semua Surat</h1>
       <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Arsip lengkap surat masuk beserta status dan posisi terkini.</p></div>
       <div class="flex gap-2">
         <input onkeyup="State.filterQ=this.value; App._render();" value="${escapeHtml(State.filterQ)}" placeholder="Cari nomor / resi / pengirim / perihal..." class="rounded-lg border px-3 py-2 text-sm w-64" style="border-color:var(--c-border);">
@@ -692,28 +697,31 @@ function InputSurat() {
   if (State.profile.role !== 'resepsionis') return AksesDitolak();
   const today = new Date().toISOString().slice(0,10);
   return `<div class="max-w-2xl mx-auto px-4 py-6">
-    <h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Input Surat Masuk</h1>
-    <p class="text-sm mt-0.5 mb-5" style="color:var(--c-ink-muted);">Nomor resi pelacakan publik akan dibuat otomatis saat surat disimpan.</p>
-    <form onsubmit="App.submitSurat(event)" class="rounded-xl border p-5 space-y-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="h-10 w-10 rounded-xl flex items-center justify-center text-lg" style="background:var(--c-primary-tint);">✍️</div>
+      <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Input Surat Masuk</h1>
+      <p class="text-xs" style="color:var(--c-ink-muted);">Nomor resi pelacakan publik dibuat otomatis saat disimpan.</p></div>
+    </div>
+    <form onsubmit="App.submitSurat(event)" class="rounded-2xl border p-6 mt-4 space-y-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:var(--shadow-sm);">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div><label class="block text-xs font-semibold mb-1">Nomor Surat *</label>
-          <input name="nomor_surat" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);" placeholder="mis. 045/PP-MR/IX/2026"></div>
-        <div><label class="block text-xs font-semibold mb-1">Sifat Surat</label>
-          <select name="sifat" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">${SIFAT_OPT.map(s=>`<option value="${s.id}">${s.id}</option>`).join('')}</select></div>
-        <div><label class="block text-xs font-semibold mb-1">Tanggal Surat *</label>
-          <input type="date" name="tanggal_surat" required value="${today}" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
-        <div><label class="block text-xs font-semibold mb-1">Tanggal Diterima</label>
-          <input type="date" name="tanggal_terima" value="${today}" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
+        <div><label class="block text-xs font-semibold mb-1" style="color:var(--c-primary);">Nomor Surat *</label>
+          <input name="nomor_surat" required class="w-full rounded-lg border px-3 py-2.5 text-sm" style="border-color:var(--c-border);" placeholder="mis. 045/PP-MR/IX/2026"></div>
+        <div><label class="block text-xs font-semibold mb-1" style="color:var(--c-primary);">Sifat Surat</label>
+          <select name="sifat" class="w-full rounded-lg border px-3 py-2.5 text-sm" style="border-color:var(--c-border);">${SIFAT_OPT.map(s=>`<option value="${s.id}">${s.id}</option>`).join('')}</select></div>
+        <div><label class="block text-xs font-semibold mb-1" style="color:var(--c-primary);">Tanggal Surat *</label>
+          <input type="date" name="tanggal_surat" required value="${today}" class="w-full rounded-lg border px-3 py-2.5 text-sm" style="border-color:var(--c-border);"></div>
+        <div><label class="block text-xs font-semibold mb-1" style="color:var(--c-primary);">Tanggal Diterima</label>
+          <input type="date" name="tanggal_terima" value="${today}" class="w-full rounded-lg border px-3 py-2.5 text-sm" style="border-color:var(--c-border);"></div>
       </div>
-      <div><label class="block text-xs font-semibold mb-1">Pengirim / Asal Surat *</label>
-        <input name="pengirim" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></div>
-      <div><label class="block text-xs font-semibold mb-1">Perihal *</label>
-        <textarea name="perihal" required rows="3" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea></div>
-      <div><label class="block text-xs font-semibold mb-1">Unggah Berkas / Scan (PDF/JPG/PNG)</label>
-        <input type="file" name="lampiran" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm rounded-lg border px-3 py-2" style="border-color:var(--c-border);"></div>
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--c-primary);">Pengirim / Asal Surat *</label>
+        <input name="pengirim" required class="w-full rounded-lg border px-3 py-2.5 text-sm" style="border-color:var(--c-border);"></div>
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--c-primary);">Perihal *</label>
+        <textarea name="perihal" required rows="3" class="w-full rounded-lg border px-3 py-2.5 text-sm" style="border-color:var(--c-border);"></textarea></div>
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--c-primary);">📎 Unggah Berkas / Scan (PDF/JPG/PNG)</label>
+        <input type="file" name="lampiran" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm rounded-lg border px-3 py-2.5" style="border-color:var(--c-border); background:var(--c-bg);"></div>
       <div class="flex justify-end gap-2 pt-2">
-        <button type="button" onclick="App.goTo('dashboard')" class="px-4 py-2 text-sm rounded-lg border" style="border-color:var(--c-border); color:var(--c-ink-muted);">Batal</button>
-        <button type="submit" class="px-4 py-2 text-sm rounded-lg font-semibold" style="background:var(--c-primary); color:white;">Simpan &amp; Catat Surat Masuk</button>
+        <button type="button" onclick="App.goTo('dashboard')" class="px-4 py-2.5 text-sm rounded-lg border" style="border-color:var(--c-border); color:var(--c-ink-muted);">Batal</button>
+        <button type="submit" class="btn-primary hover-lift px-5 py-2.5 text-sm rounded-lg font-semibold" style="color:white;">📮 Simpan &amp; Catat Surat Masuk</button>
       </div>
     </form></div>`;
 }
@@ -744,42 +752,42 @@ function ActionPanel(s) {
   const role = State.profile.role;
   const panels = [];
   if (role === 'sekretaris') {
-    if (s.current_stage === 'sekretaris') panels.push(`<div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
+    if (s.current_stage === 'sekretaris') panels.push(`<div class="rounded-xl p-4" style="background:var(--c-surface); border:1px solid var(--c-border); border-left:4px solid ${STAGE_META.dirut.c}; box-shadow:var(--shadow-sm);">
       <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Serahkan ke Direktur Utama</div>
-      <button onclick="App.forwardToDirut('${s.id}')" class="text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-primary); color:white;">🟠 Serahkan ke DIRUT</button></div>`);
-    if (s.current_stage === 'dirut') panels.push(`<div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
+      <button onclick="App.forwardToDirut('${s.id}')" class="hover-lift text-sm font-semibold px-4 py-2.5 rounded-lg" style="background:${STAGE_META.dirut.c}; color:white;">🟠 Serahkan ke DIRUT</button></div>`);
+    if (s.current_stage === 'dirut') panels.push(`<div class="rounded-xl p-4" style="background:var(--c-surface); border:1px solid var(--c-border); border-left:4px solid ${STAGE_META.dirum.c}; box-shadow:var(--shadow-sm);">
       <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Catat Disposisi Direktur Utama</div>
       <p class="text-xs mb-2" style="color:var(--c-ink-muted);">Input instruksi disposisi yang disampaikan DIRUT, teruskan ke Direktur Bidang terkait.</p>
       <form onsubmit="App.submitDisposisiDirut('${s.id}', event)" class="space-y-2">
         <select name="tujuan" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"><option value="">Pilih Direktur Bidang...</option>${DIREKTUR_BIDANG.map(r=>`<option value="${r.id}">${r.label}</option>`).join('')}</select>
         <textarea name="instruksi" required rows="2" placeholder="Instruksi disposisi *" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
         <input name="catatan" placeholder="Catatan tambahan (opsional)" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-primary); color:white;">🟡 Kirim Disposisi</button>
+        <button type="submit" class="hover-lift text-sm font-semibold px-4 py-2.5 rounded-lg" style="background:${STAGE_META.dirum.c}; color:white;">🟡 Kirim Disposisi</button>
       </form></div>`);
-    if (DIREKTUR_BIDANG.some(r => r.id === s.current_stage)) panels.push(`<div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
+    if (DIREKTUR_BIDANG.some(r => r.id === s.current_stage)) panels.push(`<div class="rounded-xl p-4" style="background:var(--c-surface); border:1px solid var(--c-border); border-left:4px solid ${STAGE_META.bagian_umum.c}; box-shadow:var(--shadow-sm);">
       <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Catat Disposisi ${roleLabel(s.current_stage)}</div>
       <p class="text-xs mb-2" style="color:var(--c-ink-muted);">Input instruksi disposisi ke Bagian terkait.</p>
       <form onsubmit="App.submitDisposisiDirektur('${s.id}', '${s.current_stage}', event)" class="space-y-2">
         <select name="tujuan" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"><option value="">Pilih Bagian...</option>${BAGIAN_LIST.map(r=>`<option value="${r.id}">${r.label}</option>`).join('')}</select>
         <textarea name="instruksi" required rows="2" placeholder="Instruksi disposisi *" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
         <input name="catatan" placeholder="Catatan tambahan (opsional)" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-primary); color:white;">🔵 Kirim Disposisi</button>
+        <button type="submit" class="hover-lift text-sm font-semibold px-4 py-2.5 rounded-lg" style="background:${STAGE_META.bagian_umum.c}; color:white;">🔵 Kirim Disposisi</button>
       </form></div>`);
-    panels.push(`<div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
-      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Perbarui Lokasi Fisik (Tracking Manual)</div>
+    panels.push(`<div class="rounded-xl p-4" style="background:var(--c-surface); border:1px solid var(--c-border); border-left:4px solid ${STAGE_META.sekretaris.c}; box-shadow:var(--shadow-sm);">
+      <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">🟣 Perbarui Lokasi Fisik (Tracking Manual)</div>
       <form onsubmit="App.updateLokasi('${s.id}', event)" class="space-y-2">
         <select name="lokasi" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">
           ${['resepsionis','sekretaris','dirut',...DIREKTUR_BIDANG.map(r=>r.id),...BAGIAN_LIST.map(r=>r.id),'selesai'].map(id=>`<option value="${id}" ${s.current_stage===id?'selected':''}>${roleLabel(id)}</option>`).join('')}
         </select>
         <input name="catatan" placeholder="Catatan (opsional)" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-accent); color:var(--c-primary-dark);">Perbarui Lokasi</button>
+        <button type="submit" class="hover-lift text-sm font-semibold px-4 py-2.5 rounded-lg" style="background:var(--c-accent); color:var(--c-primary-dark);">Perbarui Lokasi</button>
       </form></div>`);
   }
-  if (BAGIAN_LIST.some(r=>r.id===role) && s.current_stage===role) panels.push(`<div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
+  if (BAGIAN_LIST.some(r=>r.id===role) && s.current_stage===role) panels.push(`<div class="rounded-xl p-4" style="background:var(--c-surface); border:1px solid var(--c-border); border-left:4px solid var(--c-success); box-shadow:var(--shadow-sm);">
       <div class="font-semibold text-sm mb-2" style="color:var(--c-primary);">Tindak Lanjut &amp; Pengarsipan</div>
       <form onsubmit="App.selesaikanSurat('${s.id}', '${role}', event)" class="space-y-2">
         <textarea name="catatan" rows="2" placeholder="Catatan tindak lanjut (opsional)" class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);"></textarea>
-        <button type="submit" class="text-sm font-semibold px-4 py-2 rounded-lg" style="background:var(--c-success); color:white;">🟢 Tandai Diarsipkan</button>
+        <button type="submit" class="hover-lift text-sm font-semibold px-4 py-2.5 rounded-lg" style="background:var(--c-success); color:white;">🟢 Tandai Diarsipkan</button>
       </form></div>`);
   if (!panels.length) return `<div class="text-sm rounded-xl border p-4" style="border-color:var(--c-border); color:var(--c-ink-muted);">Tidak ada tindakan yang tersedia untuk peran Anda pada surat ini saat ini.</div>`;
   return panels.join('');
@@ -788,34 +796,37 @@ function DetailSurat() {
   const s = State.suratList.find(x => x.id === State.detailId);
   if (!s) return AksesDitolak();
   const sm = sifatMeta(s.sifat);
+  const sg = stageMeta(s.current_stage);
   return `<div class="max-w-5xl mx-auto px-4 py-6">
-    <button onclick="App.goTo('dashboard')" class="text-sm mb-4" style="color:var(--c-ink-muted);">&larr; Kembali</button>
-    <div class="flex items-start justify-between flex-wrap gap-3 mb-5">
-      <div><div class="flex items-center gap-2 flex-wrap">
-        <h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">${escapeHtml(s.nomor_surat)}</h1>
-        ${Badge(sm.id,sm.color,sm.tint)}${StageBadge(s.current_stage)}</div>
-        <p class="text-sm mt-1" style="color:var(--c-ink-muted);">${escapeHtml(s.perihal)}</p>
-        <p class="text-xs mt-1" style="color:var(--c-ink-muted);">Nomor Resi: <span class="font-mono font-semibold">${escapeHtml(s.nomor_resi||'-')}</span></p></div>
-      <button onclick="App.printLembar('${s.id}')" class="text-sm font-semibold px-4 py-2 rounded-lg border" style="border-color:var(--c-primary); color:var(--c-primary);">Cetak Lembar Disposisi</button>
+    <button onclick="App.goTo('dashboard')" class="text-sm mb-4 inline-flex items-center gap-1" style="color:var(--c-ink-muted);">&larr; Kembali</button>
+    <div class="rounded-2xl p-6 mb-6 flex items-start justify-between flex-wrap gap-4" style="background:linear-gradient(135deg,#0E4A78,var(--c-primary) 60%,var(--c-primary-dark)); box-shadow:var(--shadow-md); color:#fff;">
+      <div>
+        <span class="pill" style="background:rgba(255,255,255,.15); color:#fff;">${sg.emoji} ${escapeHtml(sg.label)}</span>
+        <h1 class="font-display font-extrabold text-2xl mt-3">${escapeHtml(s.nomor_surat)}</h1>
+        <p class="text-sm mt-1" style="color:rgba(255,255,255,.85);">${escapeHtml(s.perihal)}</p>
+        <p class="text-xs mt-2 font-mono" style="color:rgba(255,255,255,.7);">Resi: ${escapeHtml(s.nomor_resi||'-')}</p>
+        <span class="inline-block mt-2">${Badge(sm.id,sm.color,sm.tint)}</span>
+      </div>
+      <button onclick="App.printLembar('${s.id}')" class="hover-lift text-sm font-semibold px-4 py-2.5 rounded-lg whitespace-nowrap" style="background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.3);">🖨️ Cetak Lembar Disposisi</button>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 space-y-6">
-        <div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
-          <div class="font-semibold text-sm mb-3" style="color:var(--c-primary);">Informasi Surat</div>
+        <div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:var(--shadow-sm);">
+          <div class="font-semibold text-sm mb-3" style="color:var(--c-primary);">📋 Informasi Surat</div>
           <dl class="grid grid-cols-2 gap-y-2.5 text-sm">
             <dt style="color:var(--c-ink-muted);">Tanggal Surat</dt><dd>${fmtDate(s.tanggal_surat)}</dd>
             <dt style="color:var(--c-ink-muted);">Tanggal Diterima</dt><dd>${fmtDate(s.tanggal_terima)}</dd>
             <dt style="color:var(--c-ink-muted);">Pengirim</dt><dd>${escapeHtml(s.pengirim)}</dd>
             <dt style="color:var(--c-ink-muted);">Sifat</dt><dd>${escapeHtml(s.sifat)}</dd>
             <dt class="col-span-2" style="color:var(--c-ink-muted);">Perihal</dt><dd class="col-span-2">${escapeHtml(s.perihal)}</dd>
-            <dt style="color:var(--c-ink-muted);">Lampiran</dt><dd>${s.lampiran_path?`<button onclick="App.openLampiran('${s.lampiran_path}')" class="underline font-medium" style="color:var(--c-primary);">${escapeHtml(s.lampiran_name||'Lihat lampiran')}</button>`:'<span style="color:var(--c-ink-muted);">Tidak ada</span>'}</dd>
+            <dt style="color:var(--c-ink-muted);">Lampiran</dt><dd>${s.lampiran_path?`<button onclick="App.openLampiran('${s.lampiran_path}')" class="underline font-medium" style="color:var(--c-primary);">📎 ${escapeHtml(s.lampiran_name||'Lihat lampiran')}</button>`:'<span style="color:var(--c-ink-muted);">Tidak ada</span>'}</dd>
           </dl></div>
-        <div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
-          <div class="font-semibold text-sm mb-3" style="color:var(--c-primary);">Riwayat Disposisi</div>${DisposisiList(s.disposisi)}</div>
+        <div class="rounded-xl border p-4" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:var(--shadow-sm);">
+          <div class="font-semibold text-sm mb-3" style="color:var(--c-primary);">📨 Riwayat Disposisi</div>${DisposisiList(s.disposisi)}</div>
       </div>
       <div class="space-y-6">
-        <div><div class="font-semibold text-sm mb-3" style="color:var(--c-primary);">Tindakan</div>${ActionPanel(s)}</div>
-        <div><div class="font-semibold text-sm mb-3" style="color:var(--c-primary);">Timeline Pergerakan Surat</div>${Timeline(s.riwayat)}</div>
+        <div><div class="font-semibold text-sm mb-3" style="color:var(--c-primary);">⚡ Tindakan</div>${ActionPanel(s)}</div>
+        <div><div class="font-semibold text-sm mb-3" style="color:var(--c-primary);">🕐 Timeline Pergerakan Surat</div>${Timeline(s.riwayat)}</div>
       </div>
     </div></div>`;
 }
@@ -824,24 +835,33 @@ function AdminPanel() {
   const q = State.searchQ.toLowerCase();
   const rows = State.profiles.filter(p => !q || (p.full_name||'').toLowerCase().includes(q) || (p.email||'').toLowerCase().includes(q));
   return `<div class="max-w-3xl mx-auto px-4 py-6 space-y-4">
-    <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Kelola Pengguna &amp; Peran</h1>
-    <p class="text-sm mt-0.5" style="color:var(--c-ink-muted);">Hanya akun Resepsionis, Sekretaris, dan tiap Bagian yang perlu ditetapkan perannya.</p></div>
-    <input oninput="State.searchQ=this.value; App._render();" value="${escapeHtml(State.searchQ)}" placeholder="Cari nama / email..." class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color:var(--c-border);">
-    <div class="rounded-xl border divide-y" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:0 1px 2px rgba(11,61,99,.04), 0 10px 28px -16px rgba(11,61,99,.14);">
-      ${rows.map(p => `<div class="flex flex-wrap items-center gap-2 p-3">
+    <div class="flex items-center gap-3">
+      <div class="h-10 w-10 rounded-xl flex items-center justify-center text-lg" style="background:var(--c-primary-tint);">👥</div>
+      <div><h1 class="font-display font-bold text-xl" style="color:var(--c-primary);">Kelola Pengguna &amp; Peran</h1>
+      <p class="text-xs" style="color:var(--c-ink-muted);">Hanya akun Resepsionis, Sekretaris, dan tiap Bagian yang perlu ditetapkan perannya.</p></div>
+    </div>
+    <input oninput="State.searchQ=this.value; App._render();" value="${escapeHtml(State.searchQ)}" placeholder="🔍 Cari nama / email..." class="w-full rounded-lg border px-3 py-2.5 text-sm" style="border-color:var(--c-border);">
+    <div class="rounded-xl border divide-y" style="background:var(--c-surface); border-color:var(--c-border); box-shadow:var(--shadow-sm);">
+      ${rows.map(p => {
+        const initials = ((p.full_name||p.email||'?').trim().split(' ').map(w=>w[0]).slice(0,2).join('')||'?').toUpperCase();
+        const roleTint = p.role ? stageMeta(p.role).t : '#EEF1F4';
+        const roleColor = p.role ? stageMeta(p.role).c : 'var(--c-ink-muted)';
+        return `<div class="flex flex-wrap items-center gap-3 p-3.5">
+        <div class="h-9 w-9 rounded-full flex items-center justify-center font-display font-bold text-xs flex-shrink-0" style="background:linear-gradient(135deg,var(--c-accent),var(--c-accent-dark)); color:#fff;">${escapeHtml(initials)}</div>
         <div class="flex-1 min-w-[160px]">
           <div class="text-sm font-medium">${escapeHtml(p.full_name || p.email)}</div>
           <div class="text-xs" style="color:var(--c-ink-muted);">${escapeHtml(p.email||'')}</div>
         </div>
+        <span class="badge" style="color:${roleColor}; background:${roleTint};">${p.role ? escapeHtml(roleLabel(p.role)) : 'Belum ditetapkan'}</span>
         <select id="roleSel_${p.id}" class="rounded-lg border px-2 py-1.5 text-xs" style="border-color:var(--c-border);">
           <option value="">— Belum ditetapkan —</option>
           ${ROLES.map(r => `<option value="${r.id}" ${p.role===r.id?'selected':''}>${r.label}</option>`).join('')}
         </select>
-        <button onclick="App.assignRole('${p.id}', document.getElementById('roleSel_${p.id}').value)" class="text-xs font-semibold px-3 py-1.5 rounded-lg" style="background:var(--c-primary); color:white;">Simpan</button>
+        <button onclick="App.assignRole('${p.id}', document.getElementById('roleSel_${p.id}').value)" class="hover-lift text-xs font-semibold px-3 py-1.5 rounded-lg" style="background:var(--c-primary); color:white;">Simpan</button>
         <label class="flex items-center gap-1 text-xs" style="color:var(--c-ink-muted);">
           <input type="checkbox" ${p.is_admin?'checked':''} onchange="App.toggleAdmin('${p.id}', this.checked)"> Admin
         </label>
-      </div>`).join('') || `<div class="p-4 text-sm" style="color:var(--c-ink-muted);">Tidak ada akun yang cocok.</div>`}
+      </div>`; }).join('') || `<div class="p-6 text-sm text-center" style="color:var(--c-ink-muted);">Tidak ada akun yang cocok.</div>`}
     </div></div>`;
 }
 function buildPrintHtml(s) {
